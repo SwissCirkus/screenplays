@@ -1789,6 +1789,14 @@ body {
   margin: 6px 0 2px; padding: 0 6px; font-size: 10.5px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .5px; color: var(--fd-text-muted);
 }
+/* "Original files" — a heading that folds its list (SwissCirkus) */
+.nav-project-section-toggle {
+  display: flex; align-items: center; gap: 2px; width: 100%; border: none; background: transparent;
+  cursor: pointer; text-align: left; font-family: inherit; border-radius: 4px; padding-top: 2px; padding-bottom: 2px;
+}
+.nav-project-section-toggle:hover { color: var(--fd-text); background: var(--fd-overlay-subtle); }
+.nav-project-section-toggle .location-chevron { transform: rotate(-90deg); transition: transform .12s; display: inline-block; }
+.nav-project-section-toggle .location-chevron.expanded { transform: none; }
 .nav-project-note { padding: 4px 6px; font-size: 12px; color: var(--fd-text-muted); font-style: italic; }
 .nav-project-item {
   display: flex; align-items: center; gap: 6px; width: 100%;

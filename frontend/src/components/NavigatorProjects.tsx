@@ -24,6 +24,7 @@ import {
   dragMayCarryLink, isLinkAsset, linkDisplayName, linkFromDataTransfer, linkIcon, linkKind, normalizeLinkUrl,
 } from '../utils/linkAssets';
 import { showToast } from './Toast';
+import { authedFetch } from '../services/authedFetch';
 import { EMPTY_SCREENPLAY, PROJECT_COLORS, scriptRoute } from '../utils/projectRoutes';
 import NavContextMenu, { type NavMenuItem, type NavMenuState } from './NavContextMenu';
 
@@ -70,7 +71,22 @@ const NavigatorProjects: React.FC = () => {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkName, setLinkName] = useState('');
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  // Projects whose "Original files" list is unfolded (folded by default).
+  const [originalsOpen, setOriginalsOpen] = useState<Set<string>>(() => new Set());
   const [menu, setMenu] = useState<NavMenuState | null>(null);
+
+  /** Save a copy of one of a project's files (an imported script's original, a picture) to the computer. */
+  const saveAssetCopy = async (projectId: string, asset: ProjectAsset) => {
+    try {
+      const res = await authedFetch(api.getAssetUrl(projectId, asset.id, asset.filename));
+      if (!res.ok) throw new Error(`the file could not be read (${res.status})`); // i18n-ignore: SwissCirkus
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const { saveFile } = await import('../utils/fileOps');
+      await saveFile(bytes, asset.original_name || asset.filename);
+    } catch (err) {
+      failed(err);
+    }
+  };
   const [renaming, setRenaming] = useState<Renaming | null>(null);
   const [newProject, setNewProject] = useState<string | null>(null);
 
@@ -651,20 +667,53 @@ const NavigatorProjects: React.FC = () => {
                         </button>
                       )}
 
-                      {c.files.length > 0 && <div className="nav-project-section">{t('navigator.projects.files')}</div>}
-                      {c.files.map((f) => (
-                        <button
-                          key={f.id}
-                          type="button"
-                          className="nav-project-item"
-                          onClick={() => openProjectPage(project.id)}
-                          onContextMenu={(e) => openMenu(e, [{ label: L('openProject'), onSelect: () => openProjectPage(project.id) }])}
-                          title={t('navigator.projects.openProject')}
-                        >
-                          <span className="nav-project-icon" aria-hidden="true">{f.mime_type?.startsWith('image/') ? '🖼' : '📎'}</span>
-                          <span className="nav-project-label">{f.original_name}</span>
-                        </button>
-                      ))}
+                      {/* SwissCirkus (Christian 2026-11-14): the imported scripts' original files under their own
+                          "Original files" heading, folded away until clicked; clicking a file saves a copy of it (it used
+                          to open the project page). Other files stay under Files. */}
+                      {(() => {
+                        const originals = c.files.filter((f) => Array.isArray(f.tags) && f.tags.includes('original'));
+                        const others = c.files.filter((f) => !(Array.isArray(f.tags) && f.tags.includes('original')));
+                        const fileRow = (f: (typeof c.files)[number]) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            className="nav-project-item"
+                            onClick={() => { void saveAssetCopy(project.id, f); }}
+                            onContextMenu={(e) => openMenu(e, [
+                              { label: 'Save a copy…', onSelect: () => { void saveAssetCopy(project.id, f); } }, // i18n-ignore: SwissCirkus
+                              { label: L('openProject'), onSelect: () => openProjectPage(project.id) },
+                            ])}
+                            title={`Save a copy of ${f.original_name}`} // i18n-ignore: SwissCirkus
+                          >
+                            <span className="nav-project-icon" aria-hidden="true">{f.mime_type?.startsWith('image/') ? '🖼' : '📎'}</span>
+                            <span className="nav-project-label">{f.original_name}</span>
+                          </button>
+                        );
+                        const shown = originalsOpen.has(project.id);
+                        return (
+                          <>
+                            {originals.length > 0 && (
+                              <button
+                                type="button"
+                                className="nav-project-section nav-project-section-toggle"
+                                aria-expanded={shown}
+                                onClick={() => setOriginalsOpen((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(project.id)) next.delete(project.id); else next.add(project.id);
+                                  return next;
+                                })}
+                                title={shown ? 'Hide the original files' : 'Show the files these scripts were imported from'} // i18n-ignore: SwissCirkus
+                              >
+                                <span className={`location-chevron${shown ? ' expanded' : ''}`} aria-hidden="true">&#9662;</span>
+                                {' '}Original files · {originals.length}{/* i18n-ignore: SwissCirkus */}
+                              </button>
+                            )}
+                            {shown && originals.map(fileRow)}
+                            {others.length > 0 && <div className="nav-project-section">{t('navigator.projects.files')}</div>}
+                            {others.map(fileRow)}
+                          </>
+                        );
+                      })()}
 
                       <button type="button" className="nav-project-page" onClick={() => openProjectPage(project.id)}>
                         {t('navigator.projects.openProject')}

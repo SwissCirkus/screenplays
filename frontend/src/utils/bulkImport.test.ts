@@ -199,3 +199,16 @@ describe('bulk import: originals kept', () => {
     expect(r.failed).toEqual([]);
   });
 });
+
+describe('Navigator: Original files', () => {
+  it('originals have their own folded heading, and clicking a file saves a copy instead of opening the project page', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const tab = readFileSync(fileURLToPath(new URL('../components/NavigatorProjects.tsx', import.meta.url)), 'utf8');
+    expect(tab).toMatch(/f\.tags\.includes\('original'\)/);
+    expect(tab).toMatch(/Original files · \{originals\.length\}/);
+    expect(tab).toMatch(/\{shown && originals\.map\(fileRow\)\}/);
+    expect(tab).toMatch(/useState<Set<string>>\(\(\) => new Set\(\)\)/); // folded by default
+    expect(tab).toMatch(/onClick=\{\(\) => \{ void saveAssetCopy\(project\.id, f\); \}\}/);
+  });
+});
