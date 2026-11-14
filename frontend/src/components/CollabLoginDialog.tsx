@@ -41,7 +41,10 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
   const [loading, setLoading] = useState(false);
   const [serverConfig, setServerConfig] = useState<CollabServerConfig | null>(null);
   // Our own co-writing server with Google sign-in and no email sender: Google is the only way in.
-  const googleOnly = Boolean(collabServerHttp() && serverConfig?.googleEnabled && !serverConfig?.smtpConfigured);
+  // Until the server answers (it may be waking up — a few seconds) nothing else is shown either.
+  const googleOnly = Boolean(collabServerHttp() && (!serverConfig || (serverConfig.googleEnabled && !serverConfig.smtpConfigured)));
+  const [serverUnreachable, setServerUnreachable] = useState(false);
+  const waitingForServer = Boolean(collabServerHttp() && !serverConfig);
   // Demo-mode flag comes from the backend (DEMO_MODE env var), not from a URL
   // string match. Triggers a re-render once initDemoInfo resolves.
   const [isDemoServer, setIsDemoServer] = useState<boolean>(isDemoMode());
@@ -91,7 +94,7 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
     // One-time migration: purge the legacy key that stored email+password in
     // plaintext. The email-only replacement is under opendraft:rememberedEmail.
     try { localStorage.removeItem('opendraft:collabSavedCreds'); } catch { /* ignore */ }
-    collabAuthApi.getServerConfig().then(setServerConfig).catch(() => {});
+    collabAuthApi.getServerConfig().then(setServerConfig).catch(() => setServerUnreachable(true));
     initDemoInfo().then((info) => setIsDemoServer(Boolean(info.demo))).catch(() => {});
   }, []);
 
@@ -565,6 +568,14 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
             </p>
           </div>
           </>)}
+
+          {waitingForServer && (
+            <p style={{ margin: '8px 0', fontSize: 13, color: 'var(--fd-text-muted)', textAlign: 'center' }}>
+              {serverUnreachable
+                ? "Couldn't reach the co-writing server. Check the internet connection, close this and try again in a moment."
+                : 'Connecting to the co-writing server… (a few seconds if it was asleep)'}
+            </p>
+          )}
 
           {serverConfig?.googleEnabled && (
             <div className="settings-google-section">
