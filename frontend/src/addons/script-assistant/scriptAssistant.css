@@ -155,3 +155,9 @@
 .sa-mic-meter { display: inline-flex; align-items: center; gap: 2px; height: 22px; margin-right: auto; padding: 0 2px; }
 .sa-mic-meter > span { width: 3px; min-height: 2px; border-radius: 1px; background: var(--fd-accent); transition: height .08s linear; }
 .sa-mic-note { margin-right: auto; font-size: 12px; color: var(--fd-text-muted); }
+
+/* Google Docs access setup card (Christian 2026-11-15). */
+.sa-setup { margin-top: 8px; padding: 10px; border-radius: 8px; background: var(--fd-overlay-subtle); display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
+.sa-setup p { margin: 0; line-height: 1.45; }
+.sa-setup ol { margin: 0; padding-left: 18px; line-height: 1.45; color: var(--fd-text-muted); }
+.sa-setup .sa-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; }

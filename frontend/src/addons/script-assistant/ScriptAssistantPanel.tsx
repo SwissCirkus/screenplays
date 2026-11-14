@@ -14,7 +14,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { useTranslation } from 'react-i18next';
-import { FaKey, FaMagic, FaMicrophone, FaPaperPlane, FaStop, FaTrashAlt, FaPaperclip, FaTimes } from 'react-icons/fa';
+import { FaGoogleDrive, FaKey, FaMagic, FaMicrophone, FaPaperPlane, FaStop, FaTrashAlt, FaPaperclip, FaTimes } from 'react-icons/fa';
 import {
   inKontroll, kontrollAi, kontrollCancel, kontrollMic, kontrollReadDoc, kontrollSetEngine, useKontrollBridge,
 } from '../../services/kontrollBridge';
@@ -29,11 +29,18 @@ import {
   type AssistantEdit, type BlockRange, type PlannedEdit,
 } from './scriptEdits';
 import { SYSTEM_PROMPT, buildUserPrompt, type AttachedDoc, type Exchange } from './prompt';
+import {
+  DOCS_OFF_PROMPT, DOCS_ON_PROMPT, MAX_DOC_ROUNDS, isLookup, isWrite, lookupResult, parseDocActions, type DocWrite,
+} from './docTools';
+import {
+  appendToDoc, createDoc, readDoc, replaceDocText, searchDocs, setUpDocsAccess, turnOffDocsAccess, useDocsAccess,
+} from '../../services/googleDocsAccess';
 import './scriptAssistant.css';
 
 interface Props { editor: Editor | null }
 
-interface UiMessage { id: number; role: 'user' | 'assistant' | 'error'; content: string }
+interface UiMessage { id: number; role: 'user' | 'assistant' | 'error'; content: string; /** Show the Google Docs setup button under it. */ setup?: boolean }
+interface DocProposal { writes: DocWrite[]; chosen: boolean[] }
 interface DocRef { url: string; name: string; /** Pasted by hand: named after the Doc's first line once read. */ pasted?: boolean }
 interface Proposal {
   planned: PlannedEdit[];
@@ -45,6 +52,10 @@ interface Proposal {
 
 const MAX_TOKENS = 32000;
 const HISTORY_TURNS = 6;
+
+/** The first 40 lines of a Doc change, for the list. */
+const docPreview = (text: string) => { const lines = text.split(NL); return lines.slice(0, 40).join(NL) + (lines.length > 40 ? NL + '…' : ''); };
+const NL = String.fromCharCode(10);
 
 let counter = 0;
 const nextId = () => { counter += 1; return counter; };
@@ -81,7 +92,12 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
   useEffect(() => { if (dictation !== null) setInput(dictation); }, [dictation]);
   // Closing the panel stops a mic that is still recording.
   useEffect(() => () => { if (useKontrollBridge.getState().micOn) kontrollMic(false); }, []);
-  const [busy, setBusy] = useState<null | 'docs' | 'model'>(null);
+  const [busy, setBusy] = useState<null | 'docs' | 'model' | 'lookup'>(null);
+  // Google Docs access (Christian 2026-11-15): search and read on their own; every change to a Doc waits for Apply.
+  const docsOn = useDocsAccess((s) => s.on);
+  const docsMessage = useDocsAccess((s) => s.message);
+  const [docProposal, setDocProposal] = useState<DocProposal | null>(null);
+  const [settingUp, setSettingUp] = useState(false);
   const [docs, setDocs] = useState<DocRef[]>([]);
   const [projectDocs, setProjectDocs] = useState<DocRef[]>([]);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -121,8 +137,8 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, proposal, busy]);
 
-  const say = useCallback((role: UiMessage['role'], content: string) => {
-    setMessages((prev) => [...prev, { id: nextId(), role, content }]);
+  const say = useCallback((role: UiMessage['role'], content: string, setup = false) => {
+    setMessages((prev) => [...prev, { id: nextId(), role, content, ...(setup ? { setup: true } : {}) }]);
   }, []);
 
   const attach = (doc: DocRef) => {
@@ -149,6 +165,7 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     if (!inKontroll() && !aiReady) { setKeyOpen(true); return; }
     setInput('');
     setProposal(null);
+    setDocProposal(null);
     stoppedRef.current = false;
     say('user', request);
 
@@ -180,22 +197,48 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
       cursorScene: place.cursorScene, selection: place.selectedText,
     });
 
-    setBusy('model');
-    let answer: { ok: boolean; text: string; error?: string; cancelled?: boolean };
-    if (inKontroll()) {
-      answer = await kontrollAi(SYSTEM_PROMPT, user, hello?.engine ?? '', MAX_TOKENS);
-    } else {
+    const docsHere = useDocsAccess.getState().on;
+    const system = SYSTEM_PROMPT + '\n' + (docsHere ? DOCS_ON_PROMPT : DOCS_OFF_PROMPT);
+    const askModel = async (prompt: string) => {
+      if (inKontroll()) return kontrollAi(system, prompt, hello?.engine ?? '', MAX_TOKENS);
       const ctl = new AbortController();
       abortRef.current = ctl;
-      answer = await byokAi(SYSTEM_PROMPT, user, MAX_TOKENS, ctl.signal);
+      const a = await byokAi(system, prompt, MAX_TOKENS, ctl.signal);
       abortRef.current = null;
+      return a;
+    };
+
+    // Searches and reads in the writer's Google Docs run straight away and go back to the model, a few rounds at most.
+    const found: string[] = [];
+    let answer: { ok: boolean; text: string; error?: string; cancelled?: boolean } = { ok: false, text: '' };
+    let docActs = parseDocActions('');
+    for (let round = 0; ; round++) {
+      setBusy('model');
+      const prompt = found.length ? `${user}\n\nGOOGLE DOCS RESULTS (from your searches and reads):\n${found.join('\n\n')}` : user;
+      answer = await askModel(prompt);
+      setBusy(null);
+      if (stoppedRef.current || answer.cancelled) { say('error', t('scriptAssistant.stopped')); return; }
+      if (!answer.ok) { say('error', t('scriptAssistant.failed', { message: answer.error || '?' })); return; }
+      docActs = parseDocActions(answer.text);
+      const lookups = docActs.actions.filter(isLookup);
+      if (!lookups.length || !docsHere || round >= MAX_DOC_ROUNDS) break;
+      setBusy('lookup');
+      for (const a of lookups) {
+        try {
+          if (a.do === 'search') found.push(lookupResult(a, { hits: await searchDocs(a.query) }));
+          else found.push(lookupResult(a, { doc: await readDoc(a.id) }));
+        } catch (err) {
+          found.push(lookupResult(a, { error: err instanceof Error ? err.message : String(err) }));
+        }
+        if (stoppedRef.current) { setBusy(null); say('error', t('scriptAssistant.stopped')); return; }
+      }
     }
-    setBusy(null);
-    if (stoppedRef.current || answer.cancelled) { say('error', t('scriptAssistant.stopped')); return; }
-    if (!answer.ok) { say('error', t('scriptAssistant.failed', { message: answer.error || '?' })); return; }
 
     const reply = parseAssistantReply(answer.text);
-    say('assistant', reply.reply || (reply.edits.length ? t('scriptAssistant.proposalReady') : t('scriptAssistant.noAnswer')));
+    const wantsSetup = !docsHere && (docActs.setup || docActs.actions.length > 0);
+    say('assistant', reply.reply || (reply.edits.length ? t('scriptAssistant.proposalReady') : t('scriptAssistant.noAnswer')), wantsSetup);
+    const writes = docsHere ? docActs.actions.filter(isWrite) : [];
+    if (writes.length) setDocProposal({ writes, chosen: writes.map(() => true) });
     if (reply.edits.length) {
       const plan = planEdits(doc, reply.edits, { selection: place.selection, cursor: place.cursor });
       if (plan.planned.length) {
@@ -205,6 +248,41 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
       }
     }
   }, [input, editor, busy, docs, messages, hello, aiReady, say, t]);
+
+  const applyDocs = async () => {
+    if (!docProposal) return;
+    const chosen = docProposal.writes.filter((_, i) => docProposal.chosen[i]);
+    if (!chosen.length) return;
+    setDocProposal(null);
+    setBusy('lookup');
+    for (const w of chosen) {
+      const name = w.do === 'create' ? w.title : (w.name || w.id);
+      try {
+        if (w.do === 'create') {
+          const made = await createDoc(w.title, w.text);
+          say('assistant', `Made the Google Doc “${made.name}”: ${made.url}`); // i18n-ignore: SwissCirkus fork
+        } else if (w.do === 'append') {
+          await appendToDoc(w.id, w.text);
+          say('assistant', `Added to “${name}”.`); // i18n-ignore: SwissCirkus fork
+        } else {
+          await replaceDocText(w.id, w.text);
+          say('assistant', `Replaced the text of “${name}”.`); // i18n-ignore: SwissCirkus fork
+        }
+      } catch (err) {
+        say('error', `Couldn't change “${name}”: ${err instanceof Error ? err.message : String(err)}`); // i18n-ignore: SwissCirkus fork
+      }
+    }
+    setBusy(null);
+  };
+
+  const setUpDocs = async () => {
+    setSettingUp(true);
+    const ok = await setUpDocsAccess();
+    setSettingUp(false);
+    if (ok) say('assistant', 'Google Docs access is on. Ask me to find, read or write any of your Google Docs — nothing in a Doc changes until you press Apply.'); // i18n-ignore: SwissCirkus fork
+  };
+
+  const docTitle = (w: DocWrite) => (w.do === 'create' ? `Make a new Google Doc “${w.title}”` : w.do === 'append' ? `Add to “${w.name || w.id}”` : `Replace all the text of “${w.name || w.id}”`); // i18n-ignore: SwissCirkus fork
 
   const stop = () => { stoppedRef.current = true; if (abortRef.current) abortRef.current.abort(); else kontrollCancel(); };
 
@@ -268,13 +346,28 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
             <FaKey />
           </button>
         )}
+        {/* Google Docs access: off → shows the setup card; on → turns it off here. */}
+        <button
+          type="button"
+          className={`sa-icon-btn${docsOn ? ' on' : ''}`}
+          title={docsOn ? 'Google Docs access is on — click to turn it off' : 'Set up Google Docs access — let the assistant search, read and write your Google Docs'} // i18n-ignore: SwissCirkus fork
+          aria-label="Google Docs access" // i18n-ignore: SwissCirkus fork
+          aria-pressed={docsOn}
+          disabled={!!busy}
+          onClick={() => {
+            if (!docsOn) { say('assistant', 'I can search, read and write your Google Docs once you allow it — a one-time setup.', true); return; } // i18n-ignore: SwissCirkus fork
+            if (window.confirm('Turn off Google Docs access for the Script Assistant on this computer?')) turnOffDocsAccess(); // i18n-ignore: SwissCirkus fork
+          }}
+        >
+          <FaGoogleDrive />
+        </button>
         <button
           type="button"
           className="sa-icon-btn"
           title={t('scriptAssistant.clear')}
           aria-label={t('scriptAssistant.clear')}
-          disabled={!!busy || (!messages.length && !proposal)}
-          onClick={() => { setMessages([]); setProposal(null); }}
+          disabled={!!busy || (!messages.length && !proposal && !docProposal)}
+          onClick={() => { setMessages([]); setProposal(null); setDocProposal(null); }}
         >
           <FaTrashAlt />
         </button>
@@ -336,11 +429,25 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
           <div key={m.id} className={`sa-message sa-${m.role}`}>
             {m.role !== 'error' && <div className="sa-role">{m.role === 'user' ? t('scriptAssistant.you') : t('scriptAssistant.assistant')}</div>}
             <div className="sa-text">{m.content}</div>
+            {m.setup && !docsOn && (
+              <div className="sa-setup">
+                <p>{'Setting up Google Docs access lets the Script Assistant search all your Google Docs, read them, and — only when you press Apply — make or change them.' /* i18n-ignore: SwissCirkus fork */}</p>
+                <ol>
+                  <li>{'Press the button below; a Google window opens.' /* i18n-ignore */}</li>
+                  <li>{'Pick your Google account and allow access to your Google Drive files (tick the box if Google shows one).' /* i18n-ignore */}</li>
+                  <li>{"If Google says it hasn't verified the app, choose Advanced, then continue — it's your own app." /* i18n-ignore */}</li>
+                </ol>
+                <button type="button" className="sa-btn primary" onClick={() => void setUpDocs()} disabled={settingUp}>
+                  <FaGoogleDrive /> {settingUp ? 'Waiting for Google…' : 'Set up Google Docs access' /* i18n-ignore */}
+                </button>
+                {docsMessage && <div className="sa-problems">{`Google said: ${docsMessage}` /* i18n-ignore */}</div>}
+              </div>
+            )}
           </div>
         ))}
         {busy && (
           <div className="sa-message sa-assistant">
-            <div className="sa-text sa-thinking">{busy === 'docs' ? t('scriptAssistant.readingDocs') : t('scriptAssistant.thinking', { name: engineLabel })}</div>
+            <div className="sa-text sa-thinking">{busy === 'docs' ? t('scriptAssistant.readingDocs') : busy === 'lookup' ? 'Working in your Google Docs…' /* i18n-ignore */ : t('scriptAssistant.thinking', { name: engineLabel })}</div>
           </div>
         )}
         {proposal && (
@@ -370,6 +477,33 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
             <div className="sa-proposal-actions">
               <button type="button" className="sa-btn primary" onClick={apply} disabled={!proposal.chosen.some(Boolean)}>{t('scriptAssistant.apply')}</button>
               <button type="button" className="sa-btn" onClick={() => setProposal(null)}>{t('scriptAssistant.discard')}</button>
+            </div>
+          </div>
+        )}
+        {docProposal && (
+          <div className="sa-proposal">
+            <div className="sa-proposal-title">{'Changes to your Google Docs — tick the ones you want' /* i18n-ignore */}</div>
+            {docProposal.writes.map((w, i) => (
+              <details key={i} className="sa-edit" open={docProposal.writes.length <= 2}>
+                <summary>
+                  <input
+                    type="checkbox"
+                    checked={docProposal.chosen[i]}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      setDocProposal((prev) => prev && { ...prev, chosen: prev.chosen.map((c, j) => (j === i ? on : c)) });
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={docTitle(w)}
+                  />
+                  <span>{docTitle(w)}</span>
+                </summary>
+                <pre className="sa-edit-text">{docPreview(w.text)}</pre>
+              </details>
+            ))}
+            <div className="sa-proposal-actions">
+              <button type="button" className="sa-btn primary" onClick={() => void applyDocs()} disabled={!docProposal.chosen.some(Boolean) || !!busy}>{t('scriptAssistant.apply')}</button>
+              <button type="button" className="sa-btn" onClick={() => setDocProposal(null)}>{t('scriptAssistant.discard')}</button>
             </div>
           </div>
         )}
