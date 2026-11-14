@@ -708,7 +708,8 @@ const ProjectList: React.FC = () => {
       </div>
 
       {/* SwissCirkus: drop a pile of old scripts here; file them as they are or let Smart organise group them. */}
-      {source === 'local' && !loading && (
+      {/* Kept mounted while the list reloads after an import, so its summary stays on screen. */}
+      {source === 'local' && (
         <BulkImportBox projects={projects} onBuilt={() => { void fetchProjects(); }} onOpenProject={openProject} />
       )}
 
