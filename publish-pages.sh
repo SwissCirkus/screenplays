@@ -5,6 +5,13 @@ set -euo pipefail
 cd "$(dirname "$0")"
 COLLAB_SERVER="https://screenplays-cowrite-137075271992.us-central1.run.app"  # co-writing server (collab-server/deploy-screenplays.sh)
 
+# The build is made from the files on disk: publish only committed work, never another session's half-finished edits.
+if [ -n "$(git status --porcelain -- frontend/src frontend/public frontend/index.html)" ]; then
+  echo "Not publishing: frontend has uncommitted changes (commit them, or wait for whoever is editing):"
+  git status --short -- frontend/src frontend/public frontend/index.html
+  exit 1
+fi
+
 (cd frontend && MSYS_NO_PATHCONV=1 VITE_BASE=/screenplays/ VITE_COLLAB_SERVER="$COLLAB_SERVER" npx vite build)
 
 OUT="$(mktemp -d)"
