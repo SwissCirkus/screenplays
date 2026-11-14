@@ -23,7 +23,7 @@ import { compareText, formatDate } from '../i18n/format';
 import { FaChevronRight, FaCloud, FaDesktop, FaSearch, FaThLarge } from 'react-icons/fa';
 import { api } from '../services/api';
 import { cloudApi } from '../services/cloudApi';
-import { isWeb } from '../services/platform';
+import { isWeb, browserLibrary } from '../services/platform';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { ProjectInfo, ScriptMeta } from '../services/api';
 import Select from './Select';
@@ -77,7 +77,9 @@ function compareScripts(a: ScriptMeta, b: ScriptMeta, sort: SortKey): number {
 }
 
 /** Web is always cloud. Desktop/mobile apps let the user pick. */
-const WEB_ONLY_CLOUD = isWeb();
+// SwissCirkus fork: the browser library is "this device"; OpenDraft Cloud is not used.
+const WEB_ONLY_CLOUD = isWeb() && !browserLibrary();
+const SHOW_SOURCE_TABS = !WEB_ONLY_CLOUD && !browserLibrary();
 
 const OpenFile: React.FC<OpenFileProps> = ({ onOpen, onClose, onManageProjects, onManageProject }) => {
   const { t } = useTranslation(['projects', 'common']);
@@ -183,7 +185,7 @@ const OpenFile: React.FC<OpenFileProps> = ({ onOpen, onClose, onManageProjects, 
         <div className="dialog-header">{t('common:open')}</div>
 
         <div className="open-file-controls">
-          {!WEB_ONLY_CLOUD && (
+          {SHOW_SOURCE_TABS && (
             <div className="open-file-source-tabs" role="tablist">
               <button
                 type="button"

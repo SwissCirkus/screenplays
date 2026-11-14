@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 
-export type StorageMode = 'sqlite' | 'file-fallback' | 'localstorage-fallback' | 'http';
+export type StorageMode = 'sqlite' | 'file-fallback' | 'localstorage-fallback' | 'http' | 'browser';
 
 interface StorageStatusState {
   mode: StorageMode;

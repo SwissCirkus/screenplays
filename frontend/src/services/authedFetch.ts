@@ -150,7 +150,14 @@ function withAuth(init: RequestInit, token: string | null): RequestInit {
   return { ...init, headers };
 }
 
+/** SwissCirkus fork: images in the browser library are `webasset:` URLs, read from IndexedDB. */
+let webAssetFetcher: ((url: string) => Promise<Response>) | null = null;
+export function setWebAssetFetcher(fn: (url: string) => Promise<Response>): void {
+  webAssetFetcher = fn;
+}
+
 export async function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  if (webAssetFetcher && url.startsWith('webasset:')) return webAssetFetcher(url);
   const initial = useSettingsStore.getState().collabAuth.accessToken;
   // Route through platformFetch so HTTP backend URLs work from the Tauri
   // WebView (whose origin is https://tauri.localhost — plain fetch() to

@@ -20,7 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { FaCloud, FaDesktop, FaArrowLeft, FaFolder } from 'react-icons/fa';
 import { api } from '../services/api';
 import { cloudApi } from '../services/cloudApi';
-import { isWeb, isDesktopTauri } from '../services/platform';
+import { isWeb, isDesktopTauri, browserLibrary } from '../services/platform';
 import { getApiBase } from '../config';
 import { useProjectStore } from '../stores/projectStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -47,7 +47,9 @@ function joinFolder(dir: string, name: string): string {
 type ProjectSource = 'local' | 'cloud';
 
 /** Web is always cloud; the toggle would be misleading. */
-const WEB_ONLY_CLOUD = isWeb();
+// SwissCirkus fork: the browser library is "this device"; OpenDraft Cloud is not used.
+const WEB_ONLY_CLOUD = isWeb() && !browserLibrary();
+const SHOW_SOURCE_TABS = !WEB_ONLY_CLOUD && !browserLibrary();
 
 const ITEM_COLORS = [
   '#e06060', '#e89b4f', '#f4d35e', '#6abf69',
@@ -298,6 +300,7 @@ const ProjectList: React.FC = () => {
   const [newFileFormat, setNewFileFormat] = useState<string>('odraft');
   const [source, setSource] = useState<ProjectSource>(() => {
     if (WEB_ONLY_CLOUD) return 'cloud';
+    if (browserLibrary()) return 'local';
     return ((localStorage.getItem('opendraft:projectSource') as ProjectSource) || 'local');
   });
   const [sortKey, setSortKey] = useState<SortKey>(() => {
@@ -365,6 +368,13 @@ const ProjectList: React.FC = () => {
 
   useEffect(() => {
     fetchProjects();
+  }, [fetchProjects]);
+
+  // SwissCirkus fork: refresh when Google Drive brought in projects from elsewhere.
+  useEffect(() => {
+    const onChanged = () => { void fetchProjects(); };
+    window.addEventListener('screenplays:library-changed', onChanged);
+    return () => window.removeEventListener('screenplays:library-changed', onChanged);
   }, [fetchProjects]);
 
   useEffect(() => {
@@ -583,7 +593,7 @@ const ProjectList: React.FC = () => {
 
   return (
     <div className="project-list-page">
-      {!WEB_ONLY_CLOUD && (
+      {SHOW_SOURCE_TABS && (
         <div className="project-source-bar" role="tablist">
           <button
             type="button"

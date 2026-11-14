@@ -89,6 +89,19 @@ export function isWeb(): boolean {
   return !isTauri();
 }
 
+/**
+ * SwissCirkus fork: on the web the library lives in the browser (IndexedDB)
+ * and is mirrored to the writer's Google Drive (services/web-storage.ts,
+ * services/driveSync.ts) — no Python server. Build with VITE_STORAGE=http to
+ * get upstream's server-backed web app back.
+ */
+export function browserLibrary(): boolean {
+  if (typeof window === 'undefined') return false;
+  let env: string | undefined;
+  try { env = (import.meta as any).env?.VITE_STORAGE; } catch { env = undefined; }
+  return isWeb() && env !== 'http';
+}
+
 /** Detects the OS from the user agent. */
 export function getOS(): 'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown' {
   const ua = navigator.userAgent || '';

@@ -22,7 +22,7 @@ My Drive/Screenplays/                      (created on first run; appProperties.
     project.json                           ProjectInfo + properties + locations + script order
     <Script title>.odscript.json           script content (TipTap JSON) + meta
     <Script title>.fountain                plain mirror, rewritten on save (readable anywhere, Kontroll can import it)
-    versions/<timestamp>-<hash>.json       one snapshot per check-in (only changed scripts, like local-storage.ts)
+    versions/<date> <message>.json         one full snapshot per check-in (simpler than deltas; scripts are small)
     assets/<file>                          images and documents attached to the project
   templates.json                           formatting templates
 ```

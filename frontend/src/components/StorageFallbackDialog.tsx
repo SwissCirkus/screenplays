@@ -14,7 +14,7 @@ const StorageFallbackDialog: React.FC = () => {
   const { mode, errorReason, acknowledged, acknowledge } = useStorageStatusStore();
 
   if (acknowledged) return null;
-  if (mode === 'sqlite' || mode === 'http') return null;
+  if (mode === 'sqlite' || mode === 'http' || mode === 'browser') return null;
 
   const isFile = mode === 'file-fallback';
   const heading = isFile

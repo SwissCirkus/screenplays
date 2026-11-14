@@ -247,7 +247,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useLinkedFileStore, autoSaveAppliesToOpenDocument } from '../stores/linkedFileStore';
 import { startCollabSync, stopCollabSync } from '../services/collabSync';
 import { collabAuthApi, setLogoutCollabTeardown, setLogoutEditorReset, ensureCollabAuthenticated, collabAuthUnavailableMessage } from '../services/collabAuth';
-import { platformFetch, isTauri, isDesktopTauri, needsSelectionHandles } from '../services/platform';
+import { platformFetch, isTauri, isDesktopTauri, needsSelectionHandles, browserLibrary } from '../services/platform';
 import { reportSaveError } from '../stores/saveErrorStore';
 import { pluginRegistry } from '../plugins/registry';
 import { createTrackChangesPlugin, trackChangesPluginKey } from '../editor/trackChanges';
@@ -4013,7 +4013,7 @@ const ScreenplayEditor: React.FC = () => {
       // On the web every script is on the server, and so is a cloud script in
       // the apps: both belong to the signed-in account. A script on this
       // device belongs to nobody in particular.
-      const onServer = !isTauri() || isCloudScript(currentProject.id, currentScriptId);
+      const onServer = (!isTauri() && !browserLibrary()) || isCloudScript(currentProject.id, currentScriptId);
       const owner = onServer ? useSettingsStore.getState().collabAuth.user?.id ?? null : null;
       rememberLastSession(currentProject.id, currentScriptId, owner);
       return;

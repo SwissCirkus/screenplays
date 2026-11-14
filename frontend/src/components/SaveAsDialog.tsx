@@ -4,7 +4,7 @@ import { FaCloud, FaDesktop, FaPlus } from 'react-icons/fa';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../services/api';
 import { cloudApi } from '../services/cloudApi';
-import { isWeb } from '../services/platform';
+import { isWeb, browserLibrary } from '../services/platform';
 import type { ProjectInfo } from '../services/api';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useEditorStore } from '../stores/editorStore';
@@ -51,7 +51,9 @@ interface SaveAsDialogProps {
 }
 
 /** Web is always cloud-backed; the device/cloud toggle would be misleading. */
-const WEB_ONLY_CLOUD = isWeb();
+// SwissCirkus fork: the browser library is "this device"; OpenDraft Cloud is not used.
+const WEB_ONLY_CLOUD = isWeb() && !browserLibrary();
+const SHOW_SOURCE_TABS = !WEB_ONLY_CLOUD && !browserLibrary();
 
 /** Banner shown when the user is saving a document that came from an external
  *  file (FDX, Fountain, DOCX, etc.). Clarifies that the save goes into
@@ -369,7 +371,7 @@ const SaveAsDialog: React.FC<SaveAsDialogProps> = ({
         <div className="dialog-body">
           <ImportedSourceNotice />
 
-          {!WEB_ONLY_CLOUD && (
+          {SHOW_SOURCE_TABS && (
             <div className="dialog-row" style={{ marginBottom: 12 }}>
               <label>{t('saveAs.saveTo')}</label>
               <div className="open-file-source-tabs" role="tablist">

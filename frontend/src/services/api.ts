@@ -483,6 +483,17 @@ export async function initStorage(): Promise<void> {
   const { useStorageStatusStore } = await import('../stores/storageStatusStore');
 
   if (!isTauri()) {
+    const { browserLibrary } = await import('./platform');
+    if (browserLibrary()) {
+      // SwissCirkus fork: the library lives in this browser and is mirrored
+      // to Google Drive — no server (web-storage.ts, driveSync.ts).
+      const { initBrowserLibrary } = await import('./browserLibraryInit');
+      await initBrowserLibrary(api);
+      setCompat('storage', 'Storage', 'primary',
+        'Browser library (IndexedDB) + Google Drive', 'none');
+      useStorageStatusStore.getState().setMode('browser');
+      return;
+    }
     setCompat('storage', 'Storage', 'primary',
       'HTTP API (Python backend)', 'localStorage (browser fallback)');
     useStorageStatusStore.getState().setMode('http');

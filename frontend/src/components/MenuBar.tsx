@@ -137,7 +137,8 @@ import {
   supportsOpenInPlace,
   type InPlaceDocument,
 } from '../utils/fileOps';
-import { isDesktopTauri, isWeb, printRoute, supportsApplePencil, supportsMultipleWindows } from '../services/platform';
+import { isDesktopTauri, isWeb, browserLibrary, printRoute, supportsApplePencil, supportsMultipleWindows } from '../services/platform';
+import DriveIndicator from './DriveIndicator';
 import { checkForUpdate } from '../services/updateCheck';
 import { getCompatEntries } from '../services/compat';
 import { reportSaveError } from '../stores/saveErrorStore';
@@ -4131,7 +4132,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
         </div>
       </div>
       <div className="menu-spacer" />
-      <AuthIndicator />
+      {browserLibrary() ? <DriveIndicator /> : <AuthIndicator />}
     </>
   );
 
