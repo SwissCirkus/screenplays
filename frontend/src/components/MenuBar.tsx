@@ -1899,8 +1899,8 @@ const MenuBar: React.FC<MenuBarProps> = ({
     store.resetRevisionState();
     // A new screenplay starts at Standard pacing with no genres.
     store.setScriptProfile(DEFAULT_SCRIPT_PROFILE);
-    if (window.location.pathname !== '/') {
-      window.history.replaceState(null, '', '/');
+    if (window.location.pathname !== import.meta.env.BASE_URL) {
+      window.history.replaceState(null, '', import.meta.env.BASE_URL);
     }
   }, [editor, clearTrackChanges, setCurrentProject, setCurrentScriptId, setScripts]);
 

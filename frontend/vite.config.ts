@@ -34,6 +34,9 @@ function legacyTranspile(): Plugin | null {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // SwissCirkus fork: GitHub Pages serves the app from /screenplays/ (VITE_BASE=/screenplays/).
+  base: process.env.VITE_BASE || '/',
+
   plugins: [react(), legacyTranspile()].filter(Boolean),
 
   // Mirrored (right-to-left) rules for Arabic and Persian, emitted beside the

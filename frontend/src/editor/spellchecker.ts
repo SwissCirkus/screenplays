@@ -216,8 +216,8 @@ class SpellChecker {
     if (code === BUILTIN_LANGUAGE) {
       try {
         let [aff, dic] = await Promise.all([
-          fetch('/dictionaries/en_US.aff').then((r) => (r.ok ? r.text() : null)),
-          fetch('/dictionaries/en_US.dic').then((r) => (r.ok ? r.text() : null)),
+          fetch(`${import.meta.env.BASE_URL}dictionaries/en_US.aff`).then((r) => (r.ok ? r.text() : null)),
+          fetch(`${import.meta.env.BASE_URL}dictionaries/en_US.dic`).then((r) => (r.ok ? r.text() : null)),
         ]);
         if (aff && dic) {
           if (aff.charCodeAt(0) === 0xfeff) aff = aff.slice(1);

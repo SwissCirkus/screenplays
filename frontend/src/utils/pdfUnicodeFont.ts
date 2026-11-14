@@ -617,7 +617,8 @@ async function fetchFont(
   }
 
   try {
-    const response = await fetch(url);
+    // SwissCirkus fork: bundled fonts live under the build's base path.
+    const response = await fetch(url.startsWith('/') ? import.meta.env.BASE_URL + url.slice(1) : url);
     if (!response.ok) return null;
     // The response can only be read once, so the copy for the cache is taken
     // before this one is consumed.
