@@ -130,3 +130,23 @@
 }
 .sa-send.stop { background: transparent; color: var(--fd-text); border-color: var(--fd-overlay-medium); }
 .sa-send:disabled { opacity: .5; cursor: default; }
+
+/* SwissCirkus web build: bring your own AI key (Christian 2026-11-15). */
+.sa-byok {
+  margin: 10px 12px 0; padding: 10px; border-radius: 8px; flex-shrink: 0;
+  background: var(--fd-overlay-subtle); display: flex; flex-direction: column; gap: 8px; font-size: 12px;
+}
+.sa-byok-intro { margin: 0; color: var(--fd-text-muted); line-height: 1.45; }
+.sa-byok-row { display: flex; align-items: center; gap: 6px; margin: 0; }
+.sa-byok-row > span { width: 56px; flex-shrink: 0; color: var(--fd-text-muted); }
+.sa-byok-row input, .sa-byok-row select {
+  flex: 1; min-width: 0; height: 26px; padding: 0 8px; font-size: 12px;
+  background: var(--fd-input-bg); color: var(--fd-text); border: 1px solid var(--fd-overlay-medium); border-radius: 5px;
+}
+.sa-byok-row select option { color: #111; background: #fff; }
+.sa-byok-links { display: flex; justify-content: space-between; gap: 8px; padding-left: 62px; }
+.sa-byok-links a { color: var(--fd-accent); }
+.sa-link-btn { background: none; border: none; padding: 0; color: var(--fd-text-muted); font-size: 12px; cursor: pointer; text-decoration: underline; }
+.sa-byok-status { color: var(--fd-text-muted); padding-left: 62px; }
+.sa-byok > .sa-btn { align-self: flex-end; }
+.sa-icon-btn.on { color: var(--fd-accent); }

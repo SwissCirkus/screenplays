@@ -11,6 +11,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { FaFileImport, FaFolderOpen, FaMagic, FaTimes } from 'react-icons/fa';
 import { api, type ProjectInfo } from '../services/api';
 import { inKontroll, kontrollAi, useKontrollBridge } from '../services/kontrollBridge';
+import { byokAi, byokChoice } from '../services/byokAi';
 import { importAccept } from '../utils/importScreenplay';
 import {
   ORGANISE_SYSTEM, buildOrganisePrompt, buildProjects, collectDropped, importableOnly, matchExisting, mergeSameNames,
@@ -57,11 +58,11 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
   const byId = useMemo(() => new Map(cands.map((c) => [c.id, c])), [cands]);
   const placed = plan.reduce((n, p) => n + p.fileIds.length, 0);
 
-  const usePlan = (p: PlannedProject[]) => setPlan(matchExisting(mergeSameNames(p), projects));
+  const applyPlan = (p: PlannedProject[]) => setPlan(matchExisting(mergeSameNames(p), projects));
   // Your folders, where they make sense (each folder of one script's drafts = a project; a mixed folder is split by title).
-  const useFolders = (list: Candidate[]) => {
+  const applyFolders = (list: Candidate[]) => {
     const r = planByFolderWhereSensible(list);
-    usePlan(r.plan);
+    applyPlan(r.plan);
     const bits = [
       r.foldersUsed ? `kept ${r.foldersUsed} of your folder${r.foldersUsed === 1 ? '' : 's'} as projects` : '',
       r.foldersSplit ? `split ${r.foldersSplit} folder${r.foldersSplit === 1 ? '' : 's'} that mixed different scripts` : '',
@@ -83,7 +84,7 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
     const first: Mode = anyFolders ? 'folders' : 'title';
     setMode(first);
     setSmartNote('');
-    if (first === 'folders') useFolders(read); else usePlan(planByTitle(read));
+    if (first === 'folders') applyFolders(read); else applyPlan(planByTitle(read));
     setStage({ kind: 'plan' });
   };
 
@@ -99,22 +100,26 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
   const chooseMode = async (m: Mode) => {
     setMode(m);
     setSmartNote('');
-    if (m === 'folders') { useFolders(cands); return; }
-    if (m === 'title') { usePlan(planByTitle(cands)); return; }
-    if (!inKontroll()) {
-      setSmartNote('Smart organise uses Kontroll\'s assistant — open the writer in Kontroll\'s Screenplay tab. Grouped by title instead.'); // i18n-ignore
-      usePlan(planByTitle(cands));
+    if (m === 'folders') { applyFolders(cands); return; }
+    if (m === 'title') { applyPlan(planByTitle(cands)); return; }
+    // Online: the writer's own AI key (bring your own key), set in the Script Assistant's AI key box.
+    const own = inKontroll() ? null : byokChoice();
+    if (!inKontroll() && !(own && own.model)) {
+      setSmartNote('Smart organise needs an AI: inside Kontroll it uses Kontroll\'s models; online, add your own key in the Script Assistant (key button). Grouped by title instead.'); // i18n-ignore
+      applyPlan(planByTitle(cands));
       return;
     }
     setThinking(true);
-    const answer = await kontrollAi(ORGANISE_SYSTEM, buildOrganisePrompt(cands), hello?.engine ?? '', 8000);
+    const answer: { ok: boolean; text: string; error?: string; engine?: string } = inKontroll()
+      ? await kontrollAi(ORGANISE_SYSTEM, buildOrganisePrompt(cands), hello?.engine ?? '', 8000)
+      : { ...(await byokAi(ORGANISE_SYSTEM, buildOrganisePrompt(cands), 8000)), engine: own!.model };
     setThinking(false);
     const smart = answer.ok ? parseOrganiseReply(answer.text, cands) : null;
     if (smart) {
-      usePlan(smart);
+      applyPlan(smart);
       setSmartNote(`Grouped by ${answer.engine || 'the assistant'} — check the projects below; you can still change anything.`); // i18n-ignore
     } else {
-      usePlan(planByTitle(cands));
+      applyPlan(planByTitle(cands));
       setSmartNote(`The assistant couldn't sort them${answer.error ? ` (${answer.error})` : ''} — grouped by title instead.`); // i18n-ignore
     }
   };

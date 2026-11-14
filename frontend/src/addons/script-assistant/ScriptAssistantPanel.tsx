@@ -11,14 +11,16 @@
  * until the writer ticks the ones they want and presses Apply. Applied edits
  * land as one editor change, so one undo takes them all back.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { useTranslation } from 'react-i18next';
-import { FaMagic, FaMicrophone, FaPaperPlane, FaStop, FaTrashAlt, FaPaperclip, FaTimes } from 'react-icons/fa';
+import { FaKey, FaMagic, FaMicrophone, FaPaperPlane, FaStop, FaTrashAlt, FaPaperclip, FaTimes } from 'react-icons/fa';
 import {
   inKontroll, kontrollAi, kontrollCancel, kontrollMic, kontrollReadDoc, kontrollSetEngine, useKontrollBridge,
 } from '../../services/kontrollBridge';
 import { api } from '../../services/api';
+import { byokAi, byokChoice, useByok, CLAUDE_MODELS } from '../../services/byokAi';
+import ByokSettings from './ByokSettings';
 import { readProjectLink, openLinkInNewTab, type ProjectAsset } from '../../services/projectLinks';
 import { useProjectStore } from '../../stores/projectStore';
 import { isLinkAsset, linkDisplayName, linkKind, normalizeLinkUrl } from '../../utils/linkAssets';
@@ -85,6 +87,12 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const stoppedRef = useRef(false);
+  // Web version: the writer's own key (bring your own key). `aiReady` — a question can be asked now.
+  const byokState = useByok();
+  const byok = !hello ? byokChoice(byokState) : null;
+  const aiReady = !!hello || (!!byok && !!byok.model);
+  const [keyOpen, setKeyOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   // The open project's Google Docs, for the Attach menu.
   useEffect(() => {
@@ -127,16 +135,16 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     setPasteUrl('');
   };
 
-  const engineLabel = useMemo(() => {
-    if (!hello) return '';
+  const engineLabel = (() => {
+    if (!hello) return byok ? (CLAUDE_MODELS.find((m) => m.id === byok.model)?.label ?? byok.model) : '';
     const id = hello.engine || hello.fallback;
     return hello.engines.find((e) => e.id === id)?.label ?? id;
-  }, [hello]);
+  })();
 
   const send = useCallback(async (text?: string) => {
     const request = (text ?? input).trim();
     if (!request || !editor || busy) return;
-    if (!inKontroll()) { say('error', t('scriptAssistant.needsKontroll')); return; }
+    if (!inKontroll() && !aiReady) { setKeyOpen(true); return; }
     setInput('');
     setProposal(null);
     stoppedRef.current = false;
@@ -171,7 +179,15 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     });
 
     setBusy('model');
-    const answer = await kontrollAi(SYSTEM_PROMPT, user, hello?.engine ?? '', MAX_TOKENS);
+    let answer: { ok: boolean; text: string; error?: string; cancelled?: boolean };
+    if (inKontroll()) {
+      answer = await kontrollAi(SYSTEM_PROMPT, user, hello?.engine ?? '', MAX_TOKENS);
+    } else {
+      const ctl = new AbortController();
+      abortRef.current = ctl;
+      answer = await byokAi(SYSTEM_PROMPT, user, MAX_TOKENS, ctl.signal);
+      abortRef.current = null;
+    }
     setBusy(null);
     if (stoppedRef.current || answer.cancelled) { say('error', t('scriptAssistant.stopped')); return; }
     if (!answer.ok) { say('error', t('scriptAssistant.failed', { message: answer.error || '?' })); return; }
@@ -186,9 +202,9 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
         say('error', t('scriptAssistant.nothingApplicable', { problems: plan.problems.join('; ') }));
       }
     }
-  }, [input, editor, busy, docs, messages, hello, say, t]);
+  }, [input, editor, busy, docs, messages, hello, aiReady, say, t]);
 
-  const stop = () => { stoppedRef.current = true; kontrollCancel(); };
+  const stop = () => { stoppedRef.current = true; if (abortRef.current) abortRef.current.abort(); else kontrollCancel(); };
 
   const apply = () => {
     if (!editor || !proposal) return;
@@ -238,6 +254,18 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     <div className={`sa-panel${hello ? ' sa-in-kontroll' : ''}`}>
       <div className="sa-header">
         <span className="sa-title"><FaMagic /> {t('scriptAssistant.plugin.panel')}</span>
+        {!hello && (
+          <button
+            type="button"
+            className={`sa-icon-btn${keyOpen ? ' on' : ''}`}
+            title="AI key — use your own Claude, OpenAI or Gemini key" // i18n-ignore: web-only
+            aria-label="AI key" // i18n-ignore: web-only
+            aria-expanded={keyOpen || !aiReady}
+            onClick={() => setKeyOpen((o) => !o)}
+          >
+            <FaKey />
+          </button>
+        )}
         <button
           type="button"
           className="sa-icon-btn"
@@ -250,9 +278,10 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
         </button>
       </div>
 
-      {!hello && <div className="sa-notice">{t('scriptAssistant.needsKontroll')}</div>}
+      {!hello && (keyOpen || !aiReady) && <ByokSettings onDone={aiReady ? () => setKeyOpen(false) : undefined} />}
 
-      <div className="sa-docs">
+      {/* Attached Google Docs are read by Kontroll with the writer's Google sign-in, so they are a Kontroll feature. */}
+      {hello && <div className="sa-docs">
         {docs.map((d) => (
           <span key={d.url} className="sa-doc-chip" title={d.url}>
             <button type="button" className="sa-doc-name" onClick={() => openLinkInNewTab(d.url)}>{'📄'} {d.name}</button>
@@ -270,8 +299,8 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
         <button type="button" className="sa-attach-btn" onClick={() => setAttachOpen((o) => !o)} aria-expanded={attachOpen}>
           <FaPaperclip /> {t('scriptAssistant.attach')}
         </button>
-      </div>
-      {attachOpen && (
+      </div>}
+      {hello && attachOpen && (
         <div className="sa-attach-menu">
           {projectDocs.length === 0 && <div className="sa-attach-empty">{t('scriptAssistant.attachNone')}</div>}
           {projectDocs.map((d) => (
@@ -296,9 +325,9 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
         {messages.length === 0 && !busy && (
           <div className="sa-empty">
             {examples.map((ex) => (
-              <button key={ex} type="button" className="sa-example" disabled={!hello} onClick={() => void send(ex)}>{ex}</button>
+              <button key={ex} type="button" className="sa-example" disabled={!aiReady} onClick={() => void send(ex)}>{ex}</button>
             ))}
-            {hello && <p className="sa-hint">{t('scriptAssistant.hint', { name: engineLabel })}</p>}
+            {aiReady && <p className="sa-hint">{t('scriptAssistant.hint', { name: engineLabel })}</p>}
           </div>
         )}
         {messages.map((m) => (
@@ -367,7 +396,7 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
           placeholder={t('scriptAssistant.placeholder')}
           aria-label={t('scriptAssistant.placeholder')}
           rows={5}
-          disabled={!hello}
+          disabled={!aiReady}
         />
         <div className="sa-input-actions">
           {hello?.mic && (
@@ -386,7 +415,7 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
           {busy === 'model' ? (
             <button type="button" className="sa-send stop" onClick={stop} title={t('scriptAssistant.stop')}><FaStop /> {t('scriptAssistant.stop')}</button>
           ) : (
-            <button type="submit" className="sa-send" disabled={!input.trim() || !!busy || !hello} title={t('scriptAssistant.send')}><FaPaperPlane /> {t('scriptAssistant.send')}</button>
+            <button type="submit" className="sa-send" disabled={!input.trim() || !!busy || !aiReady} title={t('scriptAssistant.send')}><FaPaperPlane /> {t('scriptAssistant.send')}</button>
           )}
         </div>
       </form>
