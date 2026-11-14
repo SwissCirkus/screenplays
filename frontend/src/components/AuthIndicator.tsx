@@ -19,6 +19,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { performLogout, useSigningOut } from '../services/collabAuth';
 import { showToast } from './Toast';
 import CollabLoginDialog from './CollabLoginDialog';
+import { browserLibrary } from '../services/platform';
 
 const AuthIndicator: React.FC = () => {
   const { t } = useTranslation('collab');
@@ -83,10 +84,11 @@ const AuthIndicator: React.FC = () => {
           type="button"
           className="auth-indicator auth-indicator--local"
           onClick={() => setLoginOpen(true)}
-          title={t('auth.localOnlyTitle')}
+          title={browserLibrary() ? 'Sign in with Google to write together with others in real time. Your scripts stay in this browser and your Google Drive.' : t('auth.localOnlyTitle')}
         >
           <FaCloud style={{ opacity: 0.6 }} />
-          <span>{t('auth.localOnly')}</span>
+          {/* SwissCirkus fork: beside the Drive button, "Local only" would read as "not saved" */}
+          <span>{browserLibrary() ? 'Sign in to co-write' : t('auth.localOnly')}</span>
         </button>
         {loginOpen && (
           <CollabLoginDialog
