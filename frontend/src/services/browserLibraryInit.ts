@@ -22,7 +22,11 @@ export async function initBrowserLibrary(api: Record<string, unknown>): Promise<
       try { window.dispatchEvent(new CustomEvent(LIBRARY_CHANGED_EVENT)); } catch { /* ignore */ }
     },
   });
-  const storage = createWebStorage(kv, { onChange: (u) => sync.markDirty(u) });
+  const storage = createWebStorage(kv, {
+    onChange: (u) => sync.markDirty(u),
+    // A script whose name came in from Drive but whose text hasn't yet: opening it fetches the text right then.
+    loadMissingContent: (projectId, scriptId) => sync.loadScript(projectId, scriptId),
+  });
   Object.assign(api, storage);
   // Co-writing: our own server when this build has one (VITE_COLLAB_SERVER), signed in with its account.
   const server = collabServerHttp();

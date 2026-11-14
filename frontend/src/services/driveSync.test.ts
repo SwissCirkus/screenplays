@@ -77,7 +77,7 @@ const doc = (text: string) => ({ type: 'doc', content: [{ type: 'action', conten
 function device(drive: ReturnType<typeof fakeDrive>) {
   const kv = createMemoryKv();
   const sync = createDriveSync(kv, drive.t, { debounceMs: 0, toFountain: async (c: any) => `FOUNTAIN:${c.content[0].content[0].text}` });
-  const lib = createWebStorage(kv, { onChange: (u) => sync.markDirty(u) });
+  const lib = createWebStorage(kv, { onChange: (u) => sync.markDirty(u), loadMissingContent: (p, sid) => sync.loadScript(p, sid) });
   return { kv, sync, lib };
 }
 
@@ -164,6 +164,7 @@ describe('Google Drive mirror (driveSync)', () => {
 
     const b = device(drive);
     const pulled = await b.sync.connect();
+    await b.sync.whenFilled(); // versions and originals come in the background
     expect(pulled).toBeGreaterThan(0);
     expect((await b.lib.listProjects()).map((x) => x.name)).toEqual(['Shared']);
     expect((await b.lib.getScript(p.id, s.meta.id)).content).toEqual(doc('from A'));
@@ -241,8 +242,9 @@ describe('fast loading from Drive', () => {
     const kv = createMemoryKv();
     let shown = 0;
     const sync = createDriveSync(kv, counting, { debounceMs: 0, onPulled: () => { shown++; } });
-    const lib = createWebStorage(kv, { onChange: (u) => sync.markDirty(u) });
+    const lib = createWebStorage(kv, { onChange: (u) => sync.markDirty(u), loadMissingContent: (p, sid) => sync.loadScript(p, sid) });
     await sync.connect();
+    await sync.whenFilled(); // texts, versions and originals come in the background
     expect((await lib.listProjects()).length).toBe(3);
     for (const p of await lib.listProjects()) {
       expect((await lib.listScripts(p.id)).length).toBe(6);
@@ -250,5 +252,51 @@ describe('fast loading from Drive', () => {
     }
     expect(finds).toBeLessThanOrEqual(8); // root + 4 kinds + templates — was 1 + 18 scripts + 3 versions + 3 assets
     expect(shown).toBeGreaterThan(0);
+  });
+});
+
+describe('names first, texts after', () => {
+  it('the projects and script names arrive at connect; a script opened before its text arrived fetches it then', async () => {
+    const drive = fakeDrive();
+    const a = device(drive);
+    await a.sync.connect();
+    const p = await a.lib.createProject('Charlotte');
+    const s = await a.lib.createScript(p.id, { title: 'Draft 1', content: doc('the real text') });
+    await a.sync.flush();
+
+    // A browser whose Drive is slow to hand out script texts.
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    const slow = { ...drive.t, download: async (id: string) => { const f = [...drive.files.values()].find((x) => x.id === id); if (f?.name.endsWith('.screenplay.json')) await gate; return drive.t.download(id); } };
+    const kv = createMemoryKv();
+    const sync = createDriveSync(kv, slow, { debounceMs: 0 });
+    const lib = createWebStorage(kv, { onChange: (u) => sync.markDirty(u), loadMissingContent: (pid, sid) => sync.loadScript(pid, sid) });
+    await sync.connect(); // returns although no script text has come yet
+    expect((await lib.listProjects()).map((x) => x.name)).toEqual(['Charlotte']);
+    expect((await lib.listScripts(p.id)).map((x) => x.title)).toEqual(['Draft 1']);
+    const opening = lib.getScript(p.id, s.meta.id);
+    release();
+    expect((await opening).content).toEqual(doc('the real text'));
+    await sync.whenFilled();
+    // a check-in after that has the real text, never an empty script
+    await lib.checkin(p.id, 'v1');
+    expect((await lib.getScriptAtVersion(p.id, (await lib.getVersions(p.id))[0].hash, s.meta.id)).content).toEqual(doc('the real text'));
+  });
+
+  it('a script whose text has not come in is never uploaded empty', async () => {
+    const drive = fakeDrive();
+    const a = device(drive);
+    await a.sync.connect();
+    const p = await a.lib.createProject('P');
+    const s = await a.lib.createScript(p.id, { title: 'T', content: doc('keep me') });
+    await a.sync.flush();
+    const kv = createMemoryKv();
+    const sync = createDriveSync(kv, drive.t, { debounceMs: 0 });
+    const lib = createWebStorage(kv, { onChange: (u) => sync.markDirty(u), loadMissingContent: (pid, sid) => sync.loadScript(pid, sid) });
+    await sync.connect();
+    await lib.reorderScripts(p.id, [{ id: s.meta.id, sort_order: 3 }]); // touches the script before its text is fetched
+    await sync.flush();
+    await sync.whenFilled();
+    expect(JSON.parse((await drive.text('T.screenplay.json'))!).content).toEqual(doc('keep me'));
   });
 });

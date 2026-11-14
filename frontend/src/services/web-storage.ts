@@ -152,6 +152,11 @@ function blankLocation(name: string, type: LocationEntry['type'], ts: string): L
 
 export interface WebStorageOptions {
   onChange?: (unit: ChangeUnit) => void;
+  /**
+   * A script whose text isn't in this browser yet (only its name came in from Drive — driveSync's quick first pass):
+   * fetch it now. Resolves to its content, or undefined when there's nothing to fetch.
+   */
+  loadMissingContent?: (projectId: string, scriptId: string) => Promise<Record<string, unknown> | null | undefined>;
 }
 
 export function createWebStorage(kv: KvStore, opts: WebStorageOptions = {}) {
@@ -169,6 +174,13 @@ export function createWebStorage(kv: KvStore, opts: WebStorageOptions = {}) {
     rec.info.updated_at = ts;
     await kv.put(keys.project(id), rec);
     changed({ kind: 'project', projectId: id });
+  }
+
+  /** A script's text — fetched first when only its name has come in from Drive so far. */
+  async function contentOf(projectId: string, scriptId: string): Promise<unknown> {
+    const stored = await kv.get(keys.content(scriptId));
+    if (stored === undefined && opts.loadMissingContent) return opts.loadMissingContent(projectId, scriptId);
+    return stored;
   }
 
   async function readMeta(projectId: string, scriptId: string): Promise<ScriptMeta> {
@@ -304,8 +316,10 @@ export function createWebStorage(kv: KvStore, opts: WebStorageOptions = {}) {
 
     async getScript(projectId: string, scriptId: string): Promise<ScriptResponse> {
       const meta = await readMeta(projectId, scriptId);
-      const content = (await kv.get<Record<string, unknown> | null>(keys.content(scriptId))) ?? null;
-      return { meta, content };
+      let stored = await kv.get<Record<string, unknown> | null>(keys.content(scriptId));
+      // Only the name is here so far (it came from Drive, its text is still on its way): fetch the text now.
+      if (stored === undefined && opts.loadMissingContent) stored = await opts.loadMissingContent(projectId, scriptId);
+      return { meta, content: stored ?? null };
     },
 
     async saveScript(
@@ -381,7 +395,7 @@ export function createWebStorage(kv: KvStore, opts: WebStorageOptions = {}) {
       await readProject(projectId);
       const scripts: VersionScript[] = [];
       for (const meta of await allScripts(projectId)) {
-        const content = (await kv.get(keys.content(meta.id))) ?? null;
+        const content = (await contentOf(projectId, meta.id)) ?? null;
         const contentStr = content ? JSON.stringify(content) : '';
         scripts.push({ script_id: meta.id, title: meta.title, content: contentStr, content_hash: await contentHash(contentStr) });
       }
@@ -618,7 +632,7 @@ export function createWebStorage(kv: KvStore, opts: WebStorageOptions = {}) {
       for (const l of rec.locations) { existing.add(l.name); for (const a of l.aliases || []) existing.add(a); }
       const found = new Map<string, LocationEntry['type']>();
       for (const meta of await allScripts(projectId)) {
-        const content = await kv.get(keys.content(meta.id));
+        const content = await contentOf(projectId, meta.id);
         for (const heading of sceneHeadings(content)) {
           const { name, type } = parseLocationFromHeading(heading);
           if (!name) continue;

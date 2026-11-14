@@ -37,6 +37,8 @@ const ROOT_NAME = 'Screenplays';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const CONNECTED_FLAG = 'screenplays:driveConnected';
 const DIRTY_KEY = 'drive/dirty';
+/** Scripts whose name came in from Drive but whose text is still there: { scriptId: { fileId, pid } }. */
+const LAZY_KEY = 'drive/lazy';
 const MAP_KEY = 'drive/map';
 
 // ── Transport (fetch in the app, a fake in tests) ───────────────────────────
@@ -260,7 +262,11 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
     const rec = await kv.get<ProjectRecord>(keys.project(pid));
     const meta = await kv.get<ScriptMeta>(keys.script(pid, sid));
     if (!rec || !meta) return;
-    const content = (await kv.get(keys.content(sid))) ?? null;
+    let stored = await kv.get(keys.content(sid));
+    // Its text hasn't come in from Drive yet: fetch it first — never send an empty script over the real one.
+    if (stored === undefined) stored = await loadScript(sid);
+    if (stored === undefined) return;
+    const content = stored ?? null;
     const folder = await projectFolder(pid, rec.info.name);
     const base = safeName(meta.title, 'Untitled');
     await put(`script|${sid}`, { sp: 'script', spId: sid, spProject: pid }, folder, `${base}.screenplay.json`, JSON.stringify({ meta, content }));
@@ -323,6 +329,62 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
   }
 
   /** Bring in anything newer on Drive. Returns how many items changed here. */
+  // ── Scripts whose name is here but whose text is still on Drive ──
+  async function lazyList(): Promise<Record<string, { fileId: string; pid: string }>> {
+    return (await kv.get<Record<string, { fileId: string; pid: string }>>(LAZY_KEY)) ?? {};
+  }
+  const loading = new Map<string, Promise<unknown>>();
+  /** Fetch one script's text now (opening it, or the background fill). Undefined when there's nothing to fetch. */
+  async function loadScript(sid: string): Promise<Record<string, unknown> | null | undefined> {
+    const busy = loading.get(sid);
+    if (busy) return busy as Promise<Record<string, unknown> | null | undefined>;
+    const job = (async () => {
+      const entry = (await lazyList())[sid];
+      if (!entry) return undefined;
+      const body = await readJson<{ meta: ScriptMeta; content: Record<string, unknown> | null }>(entry.fileId);
+      if (!body) throw new Error('This script is still in Google Drive and could not be fetched — check the connection and try again.'); // i18n-ignore: SwissCirkus
+      // Not if it was written to here meanwhile (then this browser's copy is the newer one).
+      if ((await kv.get(keys.content(sid))) === undefined) await kv.put(keys.content(sid), body.content ?? null);
+      const lazy = await lazyList();
+      delete lazy[sid];
+      await kv.put(LAZY_KEY, lazy);
+      return (await kv.get<Record<string, unknown> | null>(keys.content(sid))) ?? null;
+    })();
+    loading.set(sid, job);
+    try { return await job; } finally { loading.delete(sid); }
+  }
+
+  let filling: Promise<void> | null = null;
+  /** Bring in the scripts' texts (six at a time), then versions, then assets — without holding up anything else. */
+  function backgroundFill(versionFiles: DriveFile[] = [], assetJobs: Array<{ pid: string; meta: AssetMeta; file: DriveFile }> = []): Promise<void> {
+    const run = async () => {
+      try {
+        await inParallel(Object.keys(await lazyList()), 6, async (sid) => {
+          try { await loadScript(sid); } catch (e) { if (e instanceof DriveAuthError) throw e; console.warn('[drive] script text skipped', sid, e); }
+        });
+        await inParallel(versionFiles, 6, async (vf) => {
+          const vid = vf.appProperties?.spId, pid = vf.appProperties?.spProject;
+          if (!vid || !pid || (await kv.get(keys.version(pid, vid)))) return;
+          const v = await readJson<VersionRecord>(vf.id);
+          if (!v) return;
+          await kv.put(keys.version(pid, vid), v);
+          await remember(`version|${vid}`, vf.id);
+        });
+        await inParallel(assetJobs, 4, async ({ pid, meta, file }) => {
+          try {
+            const blob = await transport.download(file.id);
+            await kv.put(keys.asset(pid, meta.id), { meta, blob } satisfies AssetRecord);
+            await remember(`asset|${meta.id}`, file.id);
+          } catch (e) { if (e instanceof DriveAuthError) throw e; console.warn('[drive] asset skipped', meta.id, e); }
+        });
+      } catch (e) {
+        handleError(e);
+      }
+    };
+    filling = (filling ?? Promise.resolve()).then(run);
+    return filling;
+  }
+
   /** Run `work` over `items`, `limit` at a time (Drive answers several requests at once happily). */
   async function inParallel<T>(items: T[], limit: number, work: (item: T) => Promise<void>): Promise<void> {
     let next = 0;
@@ -384,17 +446,21 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
         if (mine && mine.updated_at >= meta.updated_at) continue;
         wanted.push(meta);
       }
-      await inParallel(wanted, 6, async (meta) => {
+      // Names first (Christian 2026-11-14: "just reads … the folder names and the file names … so it looks like it's all
+      // there right from the beginning"): the script's entry comes in now from project.json; its text is fetched in the
+      // background, or right away when it's opened (loadScript). An older text here is dropped so it can't be opened
+      // and saved back over the newer one.
+      const lazy = await lazyList();
+      for (const meta of wanted) {
         const sf = scripts.get(meta.id);
-        if (!sf) return;
+        if (!sf) continue;
         await remember(`script|${meta.id}`, sf.id);
-        const body = await readJson<{ meta: ScriptMeta; content: unknown }>(sf.id);
-        if (!body) return;
-        await kv.put(keys.content(meta.id), body.content ?? null);
-        await kv.put(keys.script(pid, meta.id), body.meta ?? meta);
+        await kv.put(keys.script(pid, meta.id), meta);
+        await kv.delete(keys.content(meta.id));
+        lazy[meta.id] = { fileId: sf.id, pid };
         changedCount++;
-        showProgress();
-      });
+      }
+      await kv.put(LAZY_KEY, lazy);
       // A script deleted on the other side (only when that side is newer).
       if (remoteNewer && local) {
         for (const k of await kv.keys(keys.scripts(pid))) {
@@ -415,26 +481,8 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
     });
     showProgress(true);
 
-    // Versions: add any this browser hasn't seen.
-    await inParallel(versionFiles, 6, async (vf) => {
-      const vid = vf.appProperties?.spId, pid = vf.appProperties?.spProject;
-      if (!vid || !pid || (await kv.get(keys.version(pid, vid)))) return;
-      const v = await readJson<VersionRecord>(vf.id);
-      if (!v) return;
-      await kv.put(keys.version(pid, vid), v);
-      await remember(`version|${vid}`, vf.id);
-      changedCount++;
-    });
-
-    // The imported originals and other assets, last.
-    await inParallel(assetJobs, 4, async ({ pid, meta, file }) => {
-      try {
-        const blob = await transport.download(file.id);
-        await kv.put(keys.asset(pid, meta.id), { meta, blob } satisfies AssetRecord);
-        await remember(`asset|${meta.id}`, file.id);
-        changedCount++;
-      } catch (e) { if (e instanceof DriveAuthError) throw e; console.warn('[drive] asset skipped', meta.id, e); }
-    });
+    // The rest comes in the background: the scripts' texts, then versions, then the originals and other assets.
+    void backgroundFill(versionFiles, assetJobs);
 
     const tf = await locate('templates', { sp: 'templates' });
     if (tf && !pending.has('templates')) {
@@ -535,6 +583,12 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
     },
 
     async pending(): Promise<string[]> { return dirtyList(); },
+
+    /** Fetch a script's text now when only its name has come in (web-storage's loadMissingContent). */
+    loadScript: (_projectId: string, scriptId: string) => loadScript(scriptId),
+
+    /** Resolves when the background fill (texts, versions, assets) started by the last connect has finished. */
+    async whenFilled(): Promise<void> { await (filling ?? Promise.resolve()); },
   };
 }
 
