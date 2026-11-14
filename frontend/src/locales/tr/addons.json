@@ -166,5 +166,63 @@
       "test": "Bağlantıyı sına",
       "saveFailed": "Ayarlar bu cihaza kaydedilemedi: {{message}}"
     }
+  },
+  "scriptAssistant": {
+    "plugin": {
+      "name": "Senaryo Asistanı",
+      "menu": "Senaryo Asistanı",
+      "panel": "Senaryo Asistanı",
+      "description": "Sağda duran, senaryonuzun tamamını okuyan ve istediğinizde sahneleri yeniden yazan, ekleyen ya da silen bir asistan: bir Google Dokümanı'ndaki notları uygular veya bir taslağı sahnelere dönüştürür. Her değişiklik önce gösterilir ve yalnızca kabul ettiğinizde uygulanır. Kontroll'ün yapay zekâ modelleriyle çalışır; bu yüzden Kontroll'ün Screenplay sekmesinde kullanılır.",
+      "privacy": "Gönder'e bastığınızda senaryonuz, isteğiniz ve eklediğiniz Google Dokümanları Kontroll üzerinden orada seçtiğiniz yapay zekâ modeline (örneğin Claude veya GPT) gider. Bundan önce hiçbir şey gönderilmez ve bu eklenti hiçbir şey saklamaz."
+    },
+    "button": "Asistan",
+    "needsKontroll": "Senaryo Asistanı, Kontroll'ün yapay zekâ modelleriyle çalışır. Kullanmak için bu senaryoyu Kontroll'ün Screenplay sekmesinde açın (Tabs › Open Screenplay).",
+    "model": "Yapay zekâ modeli",
+    "modelDefault": "Kontroll'ün seçimi ({{name}})",
+    "clear": "Sohbeti temizle",
+    "attach": "Google Dokümanı ekle",
+    "attachNone": "Bu projede henüz Google Dokümanı yok. Gezgin'in Projeler sekmesinden bir tane ekleyin veya aşağıya bir bağlantı yapıştırın.",
+    "attachPaste": "Bir Google Dokümanı bağlantısı yapıştırın",
+    "attachAdd": "Ekle",
+    "attachRemove": "{{name}} öğesini kaldır",
+    "pastedDoc": "Google Dokümanı",
+    "notADoc": "Bu bir Google Dokümanı bağlantısı değil (docs.google.com/document/…).",
+    "examples": {
+      "notes": "Ekli Google Dokümanı'ndaki notları senaryoya uygula.",
+      "outline": "Ekli taslağı senaryonun sonunda sahnelere dönüştür.",
+      "tighten": "Bulunduğum sahnedeki diyalogları sıkılaştır."
+    },
+    "hint": "Yanıtlar {{name}} modelinden gelir. Uygula'ya basana kadar senaryonuzda hiçbir şey değişmez.",
+    "you": "Siz",
+    "assistant": "Asistan",
+    "placeholder": "Senaryo hakkında sorun veya neyin değişeceğini söyleyin (Ctrl+Enter gönderir)",
+    "send": "Gönder",
+    "stop": "Durdur",
+    "readingDocs": "Ekli Google Dokümanları okunuyor…",
+    "thinking": "{{name}} senaryoyu okuyor…",
+    "docSignIn": "\"{{name}}\" okunamadı: Google oturum açmanızı istiyor. Herhangi bir Kontroll web sekmesinde Google'da oturum açın (veya dokümanı bir kez açın), sonra yeniden sorun.",
+    "docFailed": "\"{{name}}\" okunamadı: {{message}}",
+    "stopped": "Durduruldu.",
+    "failed": "Asistan yanıt veremedi: {{message}}",
+    "noAnswer": "Asistan hiçbir şey söylemedi.",
+    "proposalReady": "Önerdiğim değişiklikler şunlar.",
+    "nothingApplicable": "Önerilen değişikliklerin hiçbiri senaryoya yerleştirilemedi ({{problems}}).",
+    "proposal": "Önerilen değişiklikler: istediklerinizi işaretleyin",
+    "op": {
+      "replaceScene": "{{n}}. sahneyi yeniden yaz",
+      "deleteScene": "{{n}}. sahneyi sil",
+      "insertAfterScene": "{{n}}. sahneden sonra yeni metin",
+      "insertAtStart": "İlk sahneden önce yeni metin",
+      "replaceSelection": "Seçili metni değiştir",
+      "insertAtCursor": "İmlecin olduğu yere ekle",
+      "replaceScript": "Senaryonun tamamını değiştir"
+    },
+    "skipped": "Dışarıda bırakılanlar: {{problems}}",
+    "apply": "Uygula",
+    "discard": "At",
+    "applied": "Değişiklikler uygulandı. Ctrl+Z ile geri alabilirsiniz.",
+    "applyFailed": "Değişiklikler uygulanamadı: {{message}}",
+    "changedSince": "Siz sorduktan sonra senaryonun sahneleri değişti; bu değişiklikler yanlış yere düşebilir. Yeniden sorun.",
+    "readOnly": "Bu senaryo burada salt okunur, bu yüzden hiçbir şey uygulanamaz."
   }
 }

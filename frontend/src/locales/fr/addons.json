@@ -167,5 +167,63 @@
       "test": "Tester la connexion",
       "saveFailed": "Impossible d’enregistrer les réglages sur cet appareil : {{message}}"
     }
+  },
+  "scriptAssistant": {
+    "plugin": {
+      "name": "Assistant de scénario",
+      "menu": "Assistant de scénario",
+      "panel": "Assistant de scénario",
+      "description": "Un assistant, à droite, qui lit tout votre scénario et réécrit, ajoute ou supprime des scènes à votre demande — en appliquant les notes d’un document Google ou en transformant un plan en scènes. Chaque modification est d’abord affichée et n’est appliquée que si vous l’acceptez. Fonctionne avec les modèles d’IA de Kontroll, donc dans l’onglet Screenplay de Kontroll.",
+      "privacy": "Quand vous appuyez sur Envoyer, votre scénario, votre demande et tout document Google joint passent par Kontroll jusqu’au modèle d’IA que vous y choisissez (par exemple Claude ou GPT). Rien n’est envoyé avant, et ce module complémentaire ne conserve rien."
+    },
+    "button": "Assistant IA",
+    "needsKontroll": "L’Assistant de scénario fonctionne avec les modèles d’IA de Kontroll. Ouvrez ce scénario dans l’onglet Screenplay de Kontroll (Tabs › Open Screenplay) pour l’utiliser.",
+    "model": "Modèle",
+    "modelDefault": "Choix de Kontroll ({{name}})",
+    "clear": "Effacer la conversation",
+    "attach": "Joindre un document Google",
+    "attachNone": "Ce projet n’a encore aucun document Google. Ajoutez-en un dans l’onglet Projets du Navigateur, ou collez un lien ci-dessous.",
+    "attachPaste": "Coller le lien d’un document Google",
+    "attachAdd": "Joindre",
+    "attachRemove": "Retirer {{name}}",
+    "pastedDoc": "Document Google",
+    "notADoc": "Ce n’est pas un lien de document Google (docs.google.com/document/…).",
+    "examples": {
+      "notes": "Appliquez au scénario les notes du document Google joint.",
+      "outline": "Transformez le plan joint en scènes à la fin du scénario.",
+      "tighten": "Resserrez les dialogues de la scène où je me trouve."
+    },
+    "hint": "Les réponses viennent de {{name}}. Rien ne change dans votre scénario tant que vous n’appuyez pas sur Appliquer.",
+    "you": "Vous",
+    "assistant": "L’assistant",
+    "placeholder": "Posez une question sur le scénario ou dites quoi modifier (Ctrl+Enter pour envoyer)",
+    "send": "Envoyer",
+    "stop": "Arrêter",
+    "readingDocs": "Lecture des documents Google joints…",
+    "thinking": "{{name}} lit le scénario…",
+    "docSignIn": "Impossible de lire « {{name}} » : Google vous demande de vous connecter. Connectez-vous à Google dans n’importe quel onglet web de Kontroll (ou ouvrez le document une fois), puis redemandez.",
+    "docFailed": "Impossible de lire « {{name}} » : {{message}}",
+    "stopped": "Arrêté.",
+    "failed": "L’assistant n’a pas pu répondre : {{message}}",
+    "noAnswer": "L’assistant n’a rien dit.",
+    "proposalReady": "Voici les modifications que je propose.",
+    "nothingApplicable": "Aucune des modifications proposées n’a pu être placée dans le scénario ({{problems}}).",
+    "proposal": "Modifications proposées : cochez celles que vous voulez",
+    "op": {
+      "replaceScene": "Réécrire la scène {{n}}",
+      "deleteScene": "Supprimer la scène {{n}}",
+      "insertAfterScene": "Nouveau texte après la scène {{n}}",
+      "insertAtStart": "Nouveau texte avant la première scène",
+      "replaceSelection": "Remplacer le texte sélectionné",
+      "insertAtCursor": "Insérer au curseur",
+      "replaceScript": "Remplacer tout le scénario"
+    },
+    "skipped": "Laissé de côté : {{problems}}",
+    "apply": "Appliquer",
+    "discard": "Abandonner",
+    "applied": "Modifications appliquées. Ctrl+Z les annule.",
+    "applyFailed": "Impossible d’appliquer les modifications : {{message}}",
+    "changedSince": "Les scènes du scénario ont changé depuis votre demande ; ces modifications pourraient donc tomber au mauvais endroit. Redemandez.",
+    "readOnly": "Ce scénario est en lecture seule ici ; rien ne peut être appliqué."
   }
 }

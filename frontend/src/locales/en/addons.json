@@ -166,5 +166,63 @@
       "test": "Test connection",
       "saveFailed": "Could not save the settings on this device: {{message}}"
     }
+  },
+  "scriptAssistant": {
+    "plugin": {
+      "name": "Script Assistant",
+      "menu": "Script Assistant",
+      "panel": "Script Assistant",
+      "description": "An assistant on the right that reads your whole script and rewrites, adds or removes scenes when you ask — applying notes from a Google Doc or turning an outline into scenes. Every change is shown first and applied only when you accept it. Runs on Kontroll's AI models, so it works in Kontroll's Screenplay tab.",
+      "privacy": "When you press Send, your script, your request and any Google Doc you attached go through Kontroll to the AI model you pick there (for example Claude or GPT). Nothing is sent before that, and nothing is kept by this add-on."
+    },
+    "button": "Assistant",
+    "needsKontroll": "The Script Assistant runs on Kontroll's AI models. Open this script in Kontroll's Screenplay tab (Tabs › Open Screenplay) to use it.",
+    "model": "Model",
+    "modelDefault": "Kontroll's choice ({{name}})",
+    "clear": "Clear the conversation",
+    "attach": "Attach Google Doc",
+    "attachNone": "This project has no Google Docs yet. Add one in the Navigator's Projects tab, or paste a link below.",
+    "attachPaste": "Paste a Google Doc link",
+    "attachAdd": "Attach",
+    "attachRemove": "Remove {{name}}",
+    "pastedDoc": "Google Doc",
+    "notADoc": "That isn't a Google Doc link (docs.google.com/document/…).",
+    "examples": {
+      "notes": "Apply the notes in the attached Google Doc to the script.",
+      "outline": "Turn the attached outline into scenes at the end of the script.",
+      "tighten": "Tighten the dialogue in the scene I'm in."
+    },
+    "hint": "Answers come from {{name}}. Nothing changes in your script until you press Apply.",
+    "you": "You",
+    "assistant": "Assistant",
+    "placeholder": "Ask about the script, or say what to change (Ctrl+Enter sends)",
+    "send": "Send",
+    "stop": "Stop",
+    "readingDocs": "Reading the attached Google Docs…",
+    "thinking": "{{name}} is reading the script…",
+    "docSignIn": "Couldn't read \"{{name}}\": Google wants you to sign in. Sign in to Google in any Kontroll web tab (or open the Doc once), then ask again.",
+    "docFailed": "Couldn't read \"{{name}}\": {{message}}",
+    "stopped": "Stopped.",
+    "failed": "The assistant couldn't answer: {{message}}",
+    "noAnswer": "The assistant didn't say anything.",
+    "proposalReady": "Here are the changes I suggest.",
+    "nothingApplicable": "None of the suggested changes could be placed in the script ({{problems}}).",
+    "proposal": "Suggested changes: tick the ones you want",
+    "op": {
+      "replaceScene": "Rewrite scene {{n}}",
+      "deleteScene": "Remove scene {{n}}",
+      "insertAfterScene": "New text after scene {{n}}",
+      "insertAtStart": "New text before the first scene",
+      "replaceSelection": "Replace the selected text",
+      "insertAtCursor": "Insert at the cursor",
+      "replaceScript": "Replace the whole script"
+    },
+    "skipped": "Left out: {{problems}}",
+    "apply": "Apply",
+    "discard": "Discard",
+    "applied": "Changes applied. Ctrl+Z undoes them.",
+    "applyFailed": "The changes couldn't be applied: {{message}}",
+    "changedSince": "The script's scenes changed since you asked, so these changes could land in the wrong place. Ask again.",
+    "readOnly": "This script is read-only here, so nothing can be applied."
   }
 }

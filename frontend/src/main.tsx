@@ -14,6 +14,10 @@ import { detectDeviceFonts } from './utils/deviceFonts';
 import { applyAppearance, applyNativeTheme, readAppearance } from './utils/appearance';
 import { initI18n } from './i18n';
 import { watchFoldPosture, isFoldableDevice } from './utils/foldPosture';
+import { installKontrollBridge } from './services/kontrollBridge';
+
+// Inside Kontroll's Screenplay tab: the mailbox Kontroll answers through (assistant models, Google Docs, links).
+installKontrollBridge();
 
 /**
  * Keep the `ios-windowed` class in sync with whether the app is running in an

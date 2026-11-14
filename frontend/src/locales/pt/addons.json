@@ -167,5 +167,63 @@
       "test": "Testar conexão",
       "saveFailed": "Não foi possível salvar as configurações neste dispositivo: {{message}}"
     }
+  },
+  "scriptAssistant": {
+    "plugin": {
+      "name": "Assistente de roteiro",
+      "menu": "Assistente de roteiro",
+      "panel": "Assistente de roteiro",
+      "description": "Um assistente à direita que lê todo o seu roteiro e reescreve, adiciona ou remove cenas quando você pede — aplicando notas de um documento Google ou transformando um esboço em cenas. Cada alteração aparece primeiro e só é aplicada quando você aceita. Funciona com os modelos de IA do Kontroll, por isso funciona na aba Screenplay do Kontroll.",
+      "privacy": "Quando você clica em Enviar, seu roteiro, seu pedido e qualquer documento Google anexado passam pelo Kontroll até o modelo de IA que você escolher lá (por exemplo, Claude ou GPT). Nada é enviado antes disso, e este complemento não guarda nada."
+    },
+    "button": "Assistente",
+    "needsKontroll": "O Assistente de roteiro funciona com os modelos de IA do Kontroll. Abra este roteiro na aba Screenplay do Kontroll (Tabs › Open Screenplay) para usá-lo.",
+    "model": "Modelo",
+    "modelDefault": "Escolha do Kontroll ({{name}})",
+    "clear": "Limpar a conversa",
+    "attach": "Anexar documento Google",
+    "attachNone": "Este projeto ainda não tem documentos Google. Adicione um na aba Projetos do Navegador ou cole um link abaixo.",
+    "attachPaste": "Cole o link de um documento Google",
+    "attachAdd": "Anexar",
+    "attachRemove": "Remover {{name}}",
+    "pastedDoc": "Documento Google",
+    "notADoc": "Isso não é um link de documento Google (docs.google.com/document/…).",
+    "examples": {
+      "notes": "Aplique ao roteiro as notas do documento Google anexado.",
+      "outline": "Transforme o esboço anexado em cenas no final do roteiro.",
+      "tighten": "Enxugue os diálogos da cena em que estou."
+    },
+    "hint": "As respostas vêm de {{name}}. Nada muda no seu roteiro até você clicar em Aplicar.",
+    "you": "Você",
+    "assistant": "Assistente",
+    "placeholder": "Pergunte sobre o roteiro ou diga o que mudar (Ctrl+Enter envia)",
+    "send": "Enviar",
+    "stop": "Parar",
+    "readingDocs": "Lendo os documentos Google anexados…",
+    "thinking": "{{name}} está lendo o roteiro…",
+    "docSignIn": "Não foi possível ler “{{name}}”: o Google pede que você faça login. Entre no Google em qualquer aba web do Kontroll (ou abra o documento uma vez) e pergunte de novo.",
+    "docFailed": "Não foi possível ler “{{name}}”: {{message}}",
+    "stopped": "Parado.",
+    "failed": "O assistente não conseguiu responder: {{message}}",
+    "noAnswer": "O assistente não disse nada.",
+    "proposalReady": "Estas são as alterações que sugiro.",
+    "nothingApplicable": "Nenhuma das alterações sugeridas pôde ser colocada no roteiro ({{problems}}).",
+    "proposal": "Alterações sugeridas: marque as que quiser",
+    "op": {
+      "replaceScene": "Reescrever a cena {{n}}",
+      "deleteScene": "Remover a cena {{n}}",
+      "insertAfterScene": "Novo texto depois da cena {{n}}",
+      "insertAtStart": "Novo texto antes da primeira cena",
+      "replaceSelection": "Substituir o texto selecionado",
+      "insertAtCursor": "Inserir no cursor",
+      "replaceScript": "Substituir o roteiro inteiro"
+    },
+    "skipped": "Deixado de fora: {{problems}}",
+    "apply": "Aplicar",
+    "discard": "Descartar",
+    "applied": "Alterações aplicadas. Ctrl+Z as desfaz.",
+    "applyFailed": "Não foi possível aplicar as alterações: {{message}}",
+    "changedSince": "As cenas do roteiro mudaram desde o seu pedido, então estas alterações podem cair no lugar errado. Pergunte de novo.",
+    "readOnly": "Este roteiro é somente leitura aqui, então nada pode ser aplicado."
   }
 }

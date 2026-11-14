@@ -167,5 +167,63 @@
       "test": "Probar conexión",
       "saveFailed": "No se pudieron guardar los ajustes en este dispositivo: {{message}}"
     }
+  },
+  "scriptAssistant": {
+    "plugin": {
+      "name": "Asistente de guion",
+      "menu": "Asistente de guion",
+      "panel": "Asistente de guion",
+      "description": "Un asistente a la derecha que lee todo tu guion y reescribe, añade o elimina escenas cuando se lo pides: aplica notas de un documento de Google o convierte un esquema en escenas. Cada cambio se muestra primero y solo se aplica cuando lo aceptas. Funciona con los modelos de IA de Kontroll, así que se usa en la pestaña Screenplay de Kontroll.",
+      "privacy": "Cuando pulsas Enviar, tu guion, tu petición y cualquier documento de Google que hayas adjuntado pasan por Kontroll al modelo de IA que elijas allí (por ejemplo, Claude o GPT). No se envía nada antes, y este complemento no guarda nada."
+    },
+    "button": "Asistente",
+    "needsKontroll": "El Asistente de guion funciona con los modelos de IA de Kontroll. Abre este guion en la pestaña Screenplay de Kontroll (Tabs › Open Screenplay) para usarlo.",
+    "model": "Modelo",
+    "modelDefault": "Elección de Kontroll ({{name}})",
+    "clear": "Borrar la conversación",
+    "attach": "Adjuntar documento de Google",
+    "attachNone": "Este proyecto aún no tiene documentos de Google. Añade uno en la pestaña Proyectos del Navegador o pega un enlace abajo.",
+    "attachPaste": "Pega un enlace de documento de Google",
+    "attachAdd": "Adjuntar",
+    "attachRemove": "Quitar {{name}}",
+    "pastedDoc": "Documento de Google",
+    "notADoc": "Eso no es un enlace de documento de Google (docs.google.com/document/…).",
+    "examples": {
+      "notes": "Aplica al guion las notas del documento de Google adjunto.",
+      "outline": "Convierte el esquema adjunto en escenas al final del guion.",
+      "tighten": "Ajusta los diálogos de la escena en la que estoy."
+    },
+    "hint": "Las respuestas vienen de {{name}}. Nada cambia en tu guion hasta que pulses Aplicar.",
+    "you": "Tú",
+    "assistant": "Asistente",
+    "placeholder": "Pregunta sobre el guion o di qué cambiar (Ctrl+Enter envía)",
+    "send": "Enviar",
+    "stop": "Detener",
+    "readingDocs": "Leyendo los documentos de Google adjuntos…",
+    "thinking": "{{name}} está leyendo el guion…",
+    "docSignIn": "No se pudo leer «{{name}}»: Google te pide iniciar sesión. Inicia sesión en Google en cualquier pestaña web de Kontroll (o abre el documento una vez) y vuelve a preguntar.",
+    "docFailed": "No se pudo leer «{{name}}»: {{message}}",
+    "stopped": "Detenido.",
+    "failed": "El asistente no pudo responder: {{message}}",
+    "noAnswer": "El asistente no dijo nada.",
+    "proposalReady": "Estos son los cambios que propongo.",
+    "nothingApplicable": "Ninguno de los cambios propuestos se pudo colocar en el guion ({{problems}}).",
+    "proposal": "Cambios propuestos: marca los que quieras",
+    "op": {
+      "replaceScene": "Reescribir la escena {{n}}",
+      "deleteScene": "Eliminar la escena {{n}}",
+      "insertAfterScene": "Texto nuevo después de la escena {{n}}",
+      "insertAtStart": "Texto nuevo antes de la primera escena",
+      "replaceSelection": "Reemplazar el texto seleccionado",
+      "insertAtCursor": "Insertar en el cursor",
+      "replaceScript": "Reemplazar todo el guion"
+    },
+    "skipped": "Omitido: {{problems}}",
+    "apply": "Aplicar",
+    "discard": "Descartar",
+    "applied": "Cambios aplicados. Ctrl+Z los deshace.",
+    "applyFailed": "No se pudieron aplicar los cambios: {{message}}",
+    "changedSince": "Las escenas del guion cambiaron desde que preguntaste, así que estos cambios podrían quedar en el lugar equivocado. Vuelve a preguntar.",
+    "readOnly": "Este guion es de solo lectura aquí, así que no se puede aplicar nada."
   }
 }

@@ -502,6 +502,17 @@ body {
 .menu-navigator-toggle.active { color: var(--fd-accent); }
 .menu-navigator-toggle:focus-visible { outline: 2px solid var(--fd-accent); outline-offset: -2px; }
 .menu-bar.chrome-comfortable .menu-navigator-toggle { width: 36px; height: 34px; font-size: 16px; }
+/* Script Assistant button, just left of the Drive / account buttons. */
+.menu-assistant-btn {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  height: 22px; margin-right: 6px; padding: 0 9px;
+  border: 1px solid var(--fd-overlay-medium); border-radius: 6px;
+  background: transparent; color: var(--fd-text); font-size: 12px; cursor: pointer;
+}
+.menu-assistant-btn:hover { background: var(--fd-overlay-light); }
+.menu-assistant-btn svg { color: var(--fd-accent); }
+.menu-bar.chrome-comfortable .menu-assistant-btn { height: 32px; font-size: 13px; }
+@media (max-width: 600px) { .menu-assistant-label { display: none; } }
 
 /* Leading "back to the project" control, shown only for a script that is
    inside one. Icon-only and menu-item sized so it reads as part of the bar

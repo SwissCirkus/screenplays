@@ -6,6 +6,7 @@
 import { api } from './api';
 import { authedFetch } from './authedFetch';
 import { isLinkAsset, makeLinkFile, parseLinkFile, type LinkAssetLike } from '../utils/linkAssets';
+import { inKontroll, kontrollOpen } from './kontrollBridge';
 
 export interface ProjectAsset extends LinkAssetLike {
   id: string; filename: string; original_name: string; mime_type: string;
@@ -32,8 +33,13 @@ export async function readProjectLink(projectId: string, asset: ProjectAsset): P
 /**
  * Open a link in a new browser tab. Called straight from the click (no await
  * before it) so the browser treats it as the user's own action and doesn't
- * block it as a pop-up. Inside Kontroll the new tab opens as its own window.
+ * block it as a pop-up. Inside Kontroll it opens in a Kontroll web tab, signed
+ * in to Google like the other web tabs; if Kontroll refuses it, a window opens.
  */
 export function openLinkInNewTab(url: string): void {
+  if (inKontroll()) {
+    void kontrollOpen(url).then((ok) => { if (!ok) window.open(url, '_blank', 'noopener,noreferrer'); });
+    return;
+  }
   window.open(url, '_blank', 'noopener,noreferrer');
 }

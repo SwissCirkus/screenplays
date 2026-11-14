@@ -81,6 +81,7 @@ import { INDUSTRY_STANDARD_ID } from '../stores/formattingTypes';
 import { getCurrentElementRule, getLockedFormatting } from '../utils/effectiveFormatting';
 import { selectionStartsNewPage } from '../editor/extensions';
 import { pluginRegistry, resolvePluginText } from '../plugins/registry';
+import { PLUGIN_PANEL_OPEN_EVENT } from './PluginPanelTabs';
 import { useTableReadStore } from '../stores/tableReadStore';
 import { isAiProviderConfigured, useVoiceSettingsStore } from '../stores/voiceSettingsStore';
 import { activeEngineKind } from '../services/tts/engines';
@@ -212,6 +213,7 @@ import {
   FaFilm,
   FaBoxes,
   FaBars,
+  FaMagic,
   FaInfoCircle,
   FaBook,
   FaStethoscope,
@@ -4149,6 +4151,22 @@ const MenuBar: React.FC<MenuBarProps> = ({
         </div>
       </div>
       <div className="menu-spacer" />
+      {/* Script Assistant (SwissCirkus fork): one click to the panel on the right, while the add-on is on. By id
+          and event only — the menu bar never reaches into an add-on (addons/boundary.test.ts). */}
+      {pluginRegistry.isActive('script-assistant') && (
+        <button
+          type="button"
+          className="menu-assistant-btn"
+          title={t('addons:scriptAssistant.plugin.panel')}
+          onMouseDown={keepEditorSelection}
+          onClick={() => {
+            setActiveMenu(null);
+            document.dispatchEvent(new CustomEvent(PLUGIN_PANEL_OPEN_EVENT, { detail: { panelId: 'script-assistant-panel' } }));
+          }}
+        >
+          <FaMagic /> <span className="menu-assistant-label">{t('addons:scriptAssistant.button')}</span>
+        </button>
+      )}
       {browserLibrary() ? <>{collabServerHttp() && <AuthIndicator />}<DriveIndicator /></> : <AuthIndicator />}
     </>
   );
