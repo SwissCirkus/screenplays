@@ -28,13 +28,8 @@ import { cloudApi } from '../services/cloudApi';
 import { projectApi } from '../services/projectApi';
 import { useGoBackTo } from '../hooks/useGoBack';
 import type { ProjectInfo, ScriptMeta, VersionInfo } from '../services/api';
-import {
-  parseScreenplayImport,
-  isImportCancelled,
-  extensionOf,
-  isBinaryImportExtension,
-  importAccept,
-} from '../utils/importScreenplay';
+import { importAccept } from '../utils/importScreenplay';
+import { importScriptFiles } from '../utils/importScriptFiles';
 import { downloadFDX } from '../utils/fdxExporter';
 import { downloadFountain } from '../utils/fountainExporter';
 import { exportPDF } from '../utils/pdfExporter';
@@ -1110,40 +1105,39 @@ const ProjectView: React.FC = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = importAccept();
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file || !projectId) return;
-      const fallbackTitle = file.name.replace(/\.\w+$/, '') || 'Untitled'; // i18n-ignore: stored as the script's title
-      const binary = isBinaryImportExtension(extensionOf(file.name));
-      const reader = new FileReader();
-      reader.onerror = () => {
-        console.error('Failed to read script file:', reader.error);
-        showToast(translate('projects:view.readFileFailed'), 'error');
-      };
-      reader.onload = async () => {
-        try {
-          // The script goes into the project, not into the open editor, so
-          // the file's beats/notes must not overwrite the current document.
-          const imported = await parseScreenplayImport(
-            file.name,
-            binary ? (reader.result as ArrayBuffer) : (reader.result as string),
-            { hydrateStores: false },
-          );
-          const resp = await client.createScript(projectId, {
-            title: imported.title || fallbackTitle,
-            // The file's revisions and scene numbering travel with it.
-            content: { ...(imported.doc as Record<string, unknown>), ...(imported.metadata ?? {}) },
-          });
-          await fetchScripts();
-          navigate(`/project/${projectId}/edit/${resp.meta.id}`, { state: { from: `/project/${projectId}` } });
-        } catch (err) {
-          if (isImportCancelled(err)) return;
-          console.error('Failed to import script:', err);
-          showToast(translate('projects:view.importFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
+    // Several files at once: each becomes its own script in this project.
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = Array.from((e.target as HTMLInputElement).files ?? []);
+      if (files.length === 0 || !projectId) return;
+      // The scripts go into the project, not into the open editor, so the
+      // files' beats/notes must not overwrite the current document.
+      const result = await importScriptFiles(projectId, files, client);
+      if (result.created.length > 0) await fetchScripts();
+      if (files.length === 1) {
+        // One file: open it, as a single import always did.
+        if (result.created.length === 1) {
+          navigate(`/project/${projectId}/edit/${result.created[0].id}`, { state: { from: `/project/${projectId}` } });
+        } else if (result.failed.length === 1) {
+          showToast(translate('projects:view.importFailed', { error: result.failed[0].error }), 'error');
         }
-      };
-      if (binary) reader.readAsArrayBuffer(file);
-      else reader.readAsText(file);
+        return;
+      }
+      // Several files: stay on the project page and say how it went.
+      if (result.failed.length === 0) {
+        if (result.created.length > 0) {
+          showToast(translate('projects:view.importedMany', { done: result.created.length }), 'success');
+        }
+      } else {
+        showToast(
+          translate('projects:view.importedSome', {
+            done: result.created.length,
+            total: files.length - result.skipped,
+            names: result.failed.map((f) => f.name).join(', '),
+          }),
+          result.created.length > 0 ? 'info' : 'error',
+        );
+      }
     };
     input.click();
   };

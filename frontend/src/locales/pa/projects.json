@@ -337,6 +337,8 @@
     "exportFailed": "ਐਕਸਪੋਰਟ ਅਸਫਲ ਰਿਹਾ: {{error}}",
     "readFileFailed": "ਉਹ ਫਾਈਲ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕੀ।",
     "importFailed": "ਇੰਪੋਰਟ ਅਸਫਲ ਰਿਹਾ: {{error}}",
+    "importedMany": "ਆਯਾਤ ਕੀਤੀਆਂ ਸਕ੍ਰਿਪਟਾਂ: {{done}}।",
+    "importedSome": "ਆਯਾਤ ਕੀਤੀਆਂ ਸਕ੍ਰਿਪਟਾਂ: {{total}} ਵਿੱਚੋਂ {{done}}। ਆਯਾਤ ਨਹੀਂ ਹੋ ਸਕੀਆਂ: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

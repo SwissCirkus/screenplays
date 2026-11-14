@@ -337,6 +337,8 @@
     "exportFailed": "ایکسپورٹ ناکام ہوا: {{error}}",
     "readFileFailed": "وہ فائل پڑھی نہیں جا سکی۔",
     "importFailed": "امپورٹ ناکام ہوا: {{error}}",
+    "importedMany": "درآمد شدہ اسکرپٹس: {{done}}۔",
+    "importedSome": "درآمد شدہ اسکرپٹس: {{total}} میں سے {{done}}۔ درآمد نہ ہو سکیں: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

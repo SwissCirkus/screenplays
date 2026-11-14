@@ -337,6 +337,8 @@
     "exportFailed": "ಎಕ್ಸ್‌ಪೋರ್ಟ್ ವಿಫಲವಾಯಿತು: {{error}}",
     "readFileFailed": "ಆ ಫೈಲ್ ಓದಲು ಆಗಲಿಲ್ಲ.",
     "importFailed": "ಇಂಪೋರ್ಟ್ ವಿಫಲವಾಯಿತು: {{error}}",
+    "importedMany": "ಆಮದು ಮಾಡಿದ ಸ್ಕ್ರಿಪ್ಟ್‌ಗಳು: {{done}}.",
+    "importedSome": "ಆಮದು ಮಾಡಿದ ಸ್ಕ್ರಿಪ್ಟ್‌ಗಳು: {{total}} ರಲ್ಲಿ {{done}}. ಆಮದು ಮಾಡಲಾಗಲಿಲ್ಲ: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

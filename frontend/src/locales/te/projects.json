@@ -337,6 +337,8 @@
     "exportFailed": "ఎగుమతి విఫలమైంది: {{error}}",
     "readFileFailed": "ఆ ఫైల్‌ను చదవలేకపోయాం.",
     "importFailed": "దిగుమతి విఫలమైంది: {{error}}",
+    "importedMany": "దిగుమతి చేసిన స్క్రిప్ట్‌లు: {{done}}.",
+    "importedSome": "దిగుమతి చేసిన స్క్రిప్ట్‌లు: {{total}} లో {{done}}. దిగుమతి కాలేదు: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

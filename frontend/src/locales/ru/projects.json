@@ -361,6 +361,8 @@
     "exportFailed": "Не удалось экспортировать: {{error}}",
     "readFileFailed": "Не удалось прочитать файл.",
     "importFailed": "Не удалось импортировать: {{error}}",
+    "importedMany": "Импортировано сценариев: {{done}}.",
+    "importedSome": "Импортировано сценариев: {{done}} из {{total}}. Не удалось импортировать: {{names}}",
     "size": {
       "bytes": "{{value}} Б",
       "kb": "{{value}} КБ",

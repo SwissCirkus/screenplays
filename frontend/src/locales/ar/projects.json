@@ -385,6 +385,8 @@
     "exportFailed": "فشل التصدير: {{error}}",
     "readFileFailed": "تعذّرت قراءة هذا الملف.",
     "importFailed": "فشل الاستيراد: {{error}}",
+    "importedMany": "النصوص المستوردة: {{done}}.",
+    "importedSome": "النصوص المستوردة: {{done}} من {{total}}. تعذّر استيراد: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

@@ -337,6 +337,8 @@
     "exportFailed": "ଏକ୍ସପୋର୍ଟ ବିଫଳ ହେଲା: {{error}}",
     "readFileFailed": "ସେହି ଫାଇଲ୍ ପଢ଼ିହେଲା ନାହିଁ।",
     "importFailed": "ଇମ୍ପୋର୍ଟ ବିଫଳ ହେଲା: {{error}}",
+    "importedMany": "ଆମଦାନି ହୋଇଥିବା ସ୍କ୍ରିପ୍ଟ: {{done}}।",
+    "importedSome": "ଆମଦାନି ହୋଇଥିବା ସ୍କ୍ରିପ୍ଟ: {{total}} ମଧ୍ୟରୁ {{done}}। ଆମଦାନି ହୋଇପାରିଲା ନାହିଁ: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

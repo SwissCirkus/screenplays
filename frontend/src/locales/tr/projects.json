@@ -337,6 +337,8 @@
     "exportFailed": "Dışa aktarma başarısız: {{error}}",
     "readFileFailed": "Bu dosya okunamadı.",
     "importFailed": "İçe aktarma başarısız: {{error}}",
+    "importedMany": "İçe aktarılan senaryolar: {{done}}.",
+    "importedSome": "İçe aktarılan senaryolar: {{total}} içinden {{done}}. İçe aktarılamadı: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

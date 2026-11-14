@@ -349,6 +349,8 @@
     "exportFailed": "Échec de l’exportation : {{error}}",
     "readFileFailed": "Impossible de lire ce fichier.",
     "importFailed": "Échec de l’importation : {{error}}",
+    "importedMany": "Scénarios importés : {{done}}.",
+    "importedSome": "Scénarios importés : {{done}} sur {{total}}. Import impossible : {{names}}",
     "size": {
       "bytes": "{{value}} o",
       "kb": "{{value}} Ko",

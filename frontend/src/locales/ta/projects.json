@@ -337,6 +337,8 @@
     "exportFailed": "ஏற்றுமதி தோல்வியடைந்தது: {{error}}",
     "readFileFailed": "அந்தக் கோப்பைப் படிக்க முடியவில்லை.",
     "importFailed": "இறக்குமதி தோல்வியடைந்தது: {{error}}",
+    "importedMany": "இறக்குமதி செய்த ஸ்கிரிப்ட்கள்: {{done}}.",
+    "importedSome": "இறக்குமதி செய்த ஸ்கிரிப்ட்கள்: {{total}} இல் {{done}}. இறக்குமதி செய்ய முடியவில்லை: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

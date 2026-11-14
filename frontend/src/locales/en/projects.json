@@ -337,6 +337,8 @@
     "exportFailed": "Export failed: {{error}}",
     "readFileFailed": "Could not read that file.",
     "importFailed": "Import failed: {{error}}",
+    "importedMany": "Scripts imported: {{done}}.",
+    "importedSome": "Scripts imported: {{done}} of {{total}}. Could not import: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

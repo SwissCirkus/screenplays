@@ -349,6 +349,8 @@
     "exportFailed": "Falha ao exportar: {{error}}",
     "readFileFailed": "Não foi possível ler esse arquivo.",
     "importFailed": "Falha na importação: {{error}}",
+    "importedMany": "Roteiros importados: {{done}}.",
+    "importedSome": "Roteiros importados: {{done}} de {{total}}. Não foi possível importar: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

@@ -349,6 +349,8 @@
     "exportFailed": "Error al exportar: {{error}}",
     "readFileFailed": "No se pudo leer ese archivo.",
     "importFailed": "Error al importar: {{error}}",
+    "importedMany": "Guiones importados: {{done}}.",
+    "importedSome": "Guiones importados: {{done}} de {{total}}. No se pudieron importar: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

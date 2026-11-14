@@ -337,6 +337,8 @@
     "exportFailed": "എക്സ്പോർട്ട് പരാജയപ്പെട്ടു: {{error}}",
     "readFileFailed": "ആ ഫയൽ വായിക്കാനായില്ല.",
     "importFailed": "ഇമ്പോർട്ട് പരാജയപ്പെട്ടു: {{error}}",
+    "importedMany": "ഇമ്പോർട്ട് ചെയ്ത സ്ക്രിപ്റ്റുകൾ: {{done}}.",
+    "importedSome": "ഇമ്പോർട്ട് ചെയ്ത സ്ക്രിപ്റ്റുകൾ: {{total}}-ൽ {{done}}. ഇമ്പോർട്ട് ചെയ്യാനായില്ല: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",

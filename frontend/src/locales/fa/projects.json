@@ -337,6 +337,8 @@
     "exportFailed": "خروجی گرفتن ناموفق بود: {{error}}",
     "readFileFailed": "خواندن آن فایل ممکن نشد.",
     "importFailed": "درون‌ریزی ناموفق بود: {{error}}",
+    "importedMany": "فیلمنامه‌های واردشده: {{done}}.",
+    "importedSome": "فیلمنامه‌های واردشده: {{done}} از {{total}}. وارد نشد: {{names}}",
     "size": {
       "bytes": "{{value}} بایت",
       "kb": "{{value}} کیلوبایت",

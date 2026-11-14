@@ -337,6 +337,8 @@
     "exportFailed": "એક્સપોર્ટ નિષ્ફળ: {{error}}",
     "readFileFailed": "તે ફાઇલ વાંચી શકાઈ નથી.",
     "importFailed": "ઇમ્પોર્ટ નિષ્ફળ: {{error}}",
+    "importedMany": "આયાત કરેલી સ્ક્રિપ્ટ: {{done}}.",
+    "importedSome": "આયાત કરેલી સ્ક્રિપ્ટ: {{total}} માંથી {{done}}. આયાત ન થઈ શકી: {{names}}",
     "size": {
       "bytes": "{{value}} B",
       "kb": "{{value}} KB",
