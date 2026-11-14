@@ -52,6 +52,7 @@ import { avCellElementRules, scriptBodyElementRules } from '../utils/avCellEleme
 import Select from './Select';
 import { useFoldState } from '../hooks/useFoldState';
 import { PHONE_DEVICE_CHANGE_EVENT } from '../utils/phoneDevice';
+import { centerToolbarOverPage, toolbarCenterTarget } from '../utils/toolbarCentering';
 import { formatShortcut } from '../utils/shortcuts';
 import { elementShortcutSpec } from '../utils/elementShortcuts';
 import { elementLabel, elementDescription } from '../editor/elementLabels';
@@ -410,6 +411,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
 
   /** Set by the measuring effect below; lets other state changes re-run it. */
   const remeasureRef = useRef<() => void>(() => {});
+  const recenterRef = useRef<() => void>(() => {});
 
   // The AV row group is the one toolbar content that comes and goes with the
   // cursor rather than with the window, so it is the one the ResizeObserver
@@ -422,6 +424,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
     if (!toolbar) return;
 
     const measure = () => {
+      // Measure against the stylesheet's padding; the centring lead is put
+      // back at the end, once we know which groups fit.
+      toolbar.style.paddingLeft = '';
       const containerWidth = toolbar.clientWidth;
       const groups = toolbar.querySelectorAll<HTMLElement>('[data-priority]');
       if (groups.length === 0) return;
@@ -476,6 +481,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
         }
       }
 
+      centerToolbarOverPage(toolbar);
+
       setHiddenPriorities(prev => {
         if (prev.size !== newHidden.size) return newHidden;
         for (const p of newHidden) { if (!prev.has(p)) return newHidden; }
@@ -497,13 +504,36 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
     const ro = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
-      const w = Math.round(entry.contentRect.width);
+      // Border box, not content box: the centring lead changes the padding,
+      // and that alone must not count as a resize.
+      const w = Math.round(toolbar.offsetWidth);
       // Only re-measure if container width actually changed (not just internal reflow)
       if (w === lastWidth) return;
       lastWidth = w;
       remeasure();
     });
     ro.observe(toolbar);
+    // Opening or resizing the Navigator or a right-hand panel moves the page
+    // without changing the toolbar's width: only re-centre for those.
+    const recenter = () => {
+      cancelAnimationFrame(centerRafId);
+      centerRafId = requestAnimationFrame(() => {
+        centerToolbarOverPage(toolbar);
+        const target = toolbarCenterTarget(toolbar.ownerDocument);
+        if (target && target !== observedTarget) {
+          if (observedTarget) pageRo.unobserve(observedTarget);
+          observedTarget = target;
+          pageRo.observe(target);
+        }
+      });
+    };
+    let centerRafId = 0;
+    let observedTarget: HTMLElement | null = null;
+    const pageRo = new ResizeObserver(recenter);
+    const editorMain = toolbar.ownerDocument.querySelector<HTMLElement>('.editor-main');
+    if (editorMain) pageRo.observe(editorMain);
+    recenterRef.current = recenter;
+    recenter();
     // Phone chrome switched on or off (main.tsx): every button changed size.
     window.addEventListener(PHONE_DEVICE_CHANGE_EVENT, remeasure);
 
@@ -528,6 +558,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
     requestAnimationFrame(measure);
     return () => {
       ro.disconnect();
+      pageRo.disconnect();
+      cancelAnimationFrame(centerRafId);
+      recenterRef.current = () => {};
       window.removeEventListener(PHONE_DEVICE_CHANGE_EVENT, remeasure);
       if (breakpoint) {
         if (typeof breakpoint.removeEventListener === 'function') {
@@ -1000,6 +1033,10 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
   // shows its own zoom button), and a "…" that opens an empty popup is worse
   // than no "…" at all.
   const hasOverflow = overflowContent !== null;
+
+  // Groups folding into "…" (and the "…" itself appearing) change how wide
+  // the buttons are, so the centring over the page has to follow.
+  useLayoutEffect(() => { recenterRef.current(); }, [hiddenPriorities, hasOverflow, isInsideAvRow]);
 
   if (toolbarMode === 'hidden' && (focusMode || !foldState.foldable || foldState.size !== 'phone')) return null;
 

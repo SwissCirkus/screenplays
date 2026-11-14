@@ -488,6 +488,21 @@ body {
 .menu-label { font-size: 12.5px; color: var(--fd-text); font-weight: 450; }
 .menu-spacer { flex: 1; }
 
+/* Burger at the far left: opens / closes the Navigator in one click. */
+.menu-navigator-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  width: 26px; height: 22px; margin-right: 4px;
+  padding: 0; border: none; border-radius: 6px;
+  background: transparent; color: var(--fd-text-muted);
+  font-size: 13px; cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.menu-navigator-toggle:hover { background: var(--fd-overlay-light); color: var(--fd-text); }
+.menu-navigator-toggle.active { color: var(--fd-accent); }
+.menu-navigator-toggle:focus-visible { outline: 2px solid var(--fd-accent); outline-offset: -2px; }
+.menu-bar.chrome-comfortable .menu-navigator-toggle { width: 36px; height: 34px; font-size: 16px; }
+
 /* Leading "back to the project" control, shown only for a script that is
    inside one. Icon-only and menu-item sized so it reads as part of the bar
    rather than as an extra row of chrome, with a hairline separating it from

@@ -4098,8 +4098,24 @@ const MenuBar: React.FC<MenuBarProps> = ({
     onFocus: (event: React.FocusEvent<HTMLDivElement>) => keyboard.onTopFocus(id, event),
   });
 
-  const renderMenuItems = () => (
+  // The burger at the far left is a one-click way to the Navigator, which
+  // otherwise lives two levels down in View > Panels. Only on the docked bar:
+  // the floating menu already opens from its own burger button.
+  const renderMenuItems = (withNavigatorButton = false) => (
     <>
+      {withNavigatorButton && (
+        <button
+          type="button"
+          className={`menu-navigator-toggle ${navigatorOpen ? 'active' : ''}`}
+          aria-label={t('menu:view.navigator')}
+          aria-pressed={navigatorOpen}
+          title={t('menu:view.navigator')}
+          onMouseDown={keepEditorSelection}
+          onClick={() => { setActiveMenu(null); toggleNavigator(); }}
+        >
+          <FaBars />
+        </button>
+      )}
       <div className="menu-triggers" role="menubar" id={`${menuId}-bar`} aria-label={t('menu:applicationMenu')}>
         {menus.map((menu) => (
           <div
@@ -4186,7 +4202,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
       )
     ) : (
       <div className={menuBarClass} ref={menuRef}>
-        {renderMenuItems()}
+        {renderMenuItems(true)}
       </div>
     )}
     {activeMenuData && createPortal(
