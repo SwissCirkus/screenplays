@@ -33,6 +33,8 @@ export interface KontrollHello {
   story?: boolean;
   /** Kontroll records the Script Assistant's mic (its own dictation) and types into the box. */
   mic?: boolean;
+  /** Kontroll opens this page in the computer's web browser (the globe beside Assistant). */
+  browser?: boolean;
 }
 
 interface BridgeState {
@@ -93,6 +95,7 @@ export function readHello(raw: unknown): KontrollHello | null {
     open: r.open === true,
     story: r.story === true,
     mic: r.mic === true,
+    browser: r.browser === true,
   };
 }
 
@@ -261,6 +264,12 @@ export async function kontrollSendToStoryBuilder(title: string, fountain: string
     story: typeof a.story === 'string' ? a.story : '',
     error: typeof a.error === 'string' && a.error ? a.error : (a.ok === true ? '' : 'Kontroll could not take the script.'),
   };
+}
+
+/** Open this page (the writer's own address) in the computer's web browser. Resolves false when Kontroll refused it. */
+export async function kontrollOpenInBrowser(url: string): Promise<boolean> {
+  const a = await ask('browser', { url }, 10_000);
+  return a.ok === true;
 }
 
 /** Open a link in a Kontroll web tab. Resolves false when Kontroll refused it. */

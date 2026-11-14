@@ -346,6 +346,52 @@ const ALL_ELEMENT_TYPES: ElementType[] = [
  * the editor show text before the first sync. Plain fetches on purpose, so a
  * refusal cannot raise the sign-in prompt.
  */
+/**
+ * SwissCirkus browser library: the script in the address isn't in this browser. If Google Drive is (or is about to be)
+ * connected, wait for it to bring scripts in and open this one then; if Drive brings nothing new — or isn't connected —
+ * go to the project list with a plain message instead of leaving an empty page and an error.
+ */
+async function waitForDriveThenRetry(navigate: (to: string, opts?: { replace?: boolean }) => void): Promise<void> {
+  const { useDriveStatus, wasConnectedBefore } = await import('../services/driveSync');
+  const giveUp = (why: string) => {
+    showToast(why, 'info');
+    navigate('/projects', { replace: true });
+  };
+  const st = useDriveStatus.getState().state;
+  if (!wasConnectedBefore() || st === 'error') {
+    giveUp("That script isn't in this browser. Connect Google Drive (top right) to bring in the scripts from your Drive."); // i18n-ignore: SwissCirkus
+    return;
+  }
+  if (st === 'synced') {
+    giveUp("That script isn't in this browser or your Google Drive — it may have been deleted."); // i18n-ignore: SwissCirkus
+    return;
+  }
+  showToast(st === 'ready' || st === 'expired'
+    ? 'That script is not in this browser yet. Connect Google Drive (top right) to bring it in.' // i18n-ignore: SwissCirkus
+    : 'Bringing your scripts in from Google Drive…', 'info'); // i18n-ignore: SwissCirkus
+  await new Promise<void>((resolve) => {
+    let finished = false;
+    const finish = (pulled: boolean) => {
+      if (finished) return;
+      finished = true;
+      window.removeEventListener('screenplays:library-changed', onPulled);
+      unsub();
+      clearTimeout(timer);
+      if (pulled) useProjectStore.getState().triggerScriptReload();
+      else giveUp("That script wasn't in your Google Drive either — it may have been deleted."); // i18n-ignore: SwissCirkus
+      resolve();
+    };
+    const onPulled = () => finish(true);
+    window.addEventListener('screenplays:library-changed', onPulled);
+    // Drive finished without bringing anything new: the script isn't there.
+    const unsub = useDriveStatus.subscribe((s, prev) => {
+      if (s.state === 'synced' && prev.state !== 'synced') setTimeout(() => finish(false), 300);
+      if (s.state === 'error') finish(false);
+    });
+    const timer = setTimeout(() => finish(false), 90_000);
+  });
+}
+
 async function fetchSharedScript(projectId: string, scriptId: string, collabWsUrl = getCollabWsUrl()): Promise<{ project: any; scriptResp: any }> {
   // SwissCirkus fork: the host's script is in their browser + Drive, not on a server — the live connection brings it.
   if (browserLibrary()) return { project: null, scriptResp: null };
@@ -4287,8 +4333,11 @@ const ScreenplayEditor: React.FC = () => {
             // Scene-heading spacing: a script written before the two-line
             // standard opens on the spacing it was composed against, and is
             // offered the change once (issue #76).
-            store.setSceneHeadingSpaceBefore(resolveSceneHeadingSpaceBefore(c));
-            setSceneSpacingPrompt(predatesStandardSceneSpacing(c));
+            // SwissCirkus (Christian 2026-11-14: "auto reformat all the scripts … so I don't have to manually"): in the browser
+            // library an older script takes the standard spacing as it opens, instead of asking Keep / Reformat every time.
+            const adoptStandardSpacing = browserLibrary() && predatesStandardSceneSpacing(c);
+            store.setSceneHeadingSpaceBefore(adoptStandardSpacing ? null : resolveSceneHeadingSpaceBefore(c));
+            setSceneSpacingPrompt(!adoptStandardSpacing && predatesStandardSceneSpacing(c));
           }
         }
 
@@ -4306,6 +4355,11 @@ const ScreenplayEditor: React.FC = () => {
         if (errMsg.includes('404') && urlProjectId) {
           showToast(tg('editor:toast.scriptNotFound'), 'error');
           navigate(`/project/${urlProjectId}`, { replace: true });
+        } else if (browserLibrary() && /not found/i.test(errMsg)) {
+          // SwissCirkus browser library (Christian 2026-11-14: "Failed to load script: Project not found"): the address
+          // names a script this browser doesn't have yet — usually one on Google Drive that hasn't been brought in. Wait
+          // for Drive to bring it in and open it then; otherwise go to the project list instead of an empty page.
+          void waitForDriveThenRetry(navigate);
         } else {
           showToast(tg('editor:toast.loadScriptFailed', { error: errMsg }), 'error');
         }
@@ -4760,8 +4814,11 @@ const ScreenplayEditor: React.FC = () => {
           // Scene-heading spacing: a script written before the two-line
           // standard opens on the spacing it was composed against, and is
           // offered the change once (issue #76).
-          store.setSceneHeadingSpaceBefore(resolveSceneHeadingSpaceBefore(c));
-          setSceneSpacingPrompt(predatesStandardSceneSpacing(c));
+          // SwissCirkus (Christian 2026-11-14: "auto reformat all the scripts … so I don't have to manually"): in the browser
+          // library an older script takes the standard spacing as it opens, instead of asking Keep / Reformat every time.
+          const adoptStandardSpacing = browserLibrary() && predatesStandardSceneSpacing(c);
+          store.setSceneHeadingSpaceBefore(adoptStandardSpacing ? null : resolveSceneHeadingSpaceBefore(c));
+          setSceneSpacingPrompt(!adoptStandardSpacing && predatesStandardSceneSpacing(c));
           // Restore per-document spell/grammar check toggles
           store.setSpellCheckEnabled(c._spellCheckEnabled === true);
           store.setGrammarCheckEnabled(c._grammarCheckEnabled === true);

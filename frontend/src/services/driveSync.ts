@@ -496,6 +496,19 @@ export type DriveSync = ReturnType<typeof createDriveSync>;
 let tokenClient: any = null;
 let accessToken: string | null = null;
 let tokenExpiry = 0;
+/* Staying connected (Christian 2026-11-14, from Kontroll: "I have to connect to Google Drive every time I open it — can you not stay
+   connected?"): the access token is kept for its lifetime (about an hour) so a reload doesn't forget it; when it has run out, someone who
+   connected before is reconnected quietly at start (consent was given — Google doesn't ask again); and it is renewed a minute before it
+   runs out while the app is open. Still the browser-only token flow — no refresh token is ever stored. */
+const TOKEN_KEY = 'screenplays:driveToken';
+try { const t = JSON.parse(localStorage.getItem(TOKEN_KEY) || 'null'); if (t && t.token && Number(t.expiry) > Date.now()) { accessToken = t.token; tokenExpiry = Number(t.expiry); } } catch { /* none kept */ }
+let renewTimer: any = null;
+function keepToken() {
+  try { localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: accessToken, expiry: tokenExpiry })); } catch { /* ignore */ }
+  clearTimeout(renewTimer);
+  const wait = tokenExpiry - Date.now() - 60000;
+  if (wait > 0) renewTimer = setTimeout(() => { void signInToDrive().catch(() => { /* the indicator offers Connect */ }); }, wait);
+}
 
 export function currentDriveToken(): string | null {
   if (!accessToken || Date.now() > tokenExpiry) return null;
@@ -528,6 +541,7 @@ export async function signInToDrive(): Promise<void> {
         accessToken = res.access_token;
         tokenExpiry = Date.now() + (Number(res.expires_in || 3600) - 60) * 1000;
         try { localStorage.setItem(CONNECTED_FLAG, '1'); } catch { /* ignore */ }
+        keepToken();
         resolve();
       },
       error_callback: (err: any) => reject(new Error(err?.message || 'Sign-in was closed')),
@@ -544,6 +558,17 @@ export function wasConnectedBefore(): boolean {
 let appSync: DriveSync | null = null;
 export function setAppDriveSync(s: DriveSync) { appSync = s; }
 export function appDriveSync(): DriveSync | null { return appSync; }
+
+/** At start: connected before → use the kept token, or reconnect quietly; nothing to do for someone who never connected. */
+export async function resumeDrive(): Promise<boolean> {
+  if (!appSync || !wasConnectedBefore()) return false;
+  try {
+    if (!currentDriveToken()) await signInToDrive();
+    else keepToken();
+    await appSync.connect();
+    return true;
+  } catch { return false; } // the indicator stays "Connect" — one click, as before
+}
 
 /** The menu-bar button: sign in (from the click) and sync. */
 export async function connectDrive(): Promise<void> {

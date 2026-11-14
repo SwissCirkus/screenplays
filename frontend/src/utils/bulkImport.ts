@@ -162,7 +162,7 @@ export function scriptKey(title: string): string {
     .replace(/[_]+/g, ' ') // "Goldpaw_v2": an underscore joins words for \b
     .replace(/\(\s*\d+\s*\)/g, ' ')
     .replace(/\b(draft|drft|rev|revision|version|ver|v)\s*[#-]?\s*\d+([.-]\d+)*\b/g, ' ')
-    .replace(/\b(final|shooting|production|white|blue|pink|yellow|green|goldenrod|buff|salmon|cherry|revised|revision|rev|draft|drft|version|ver|v|copy|backup|old|new|edit|edited|polish|pass|notes?|fdx|fountain|pdf)\b\.?\s*[#-]?\s*\d*([.-]\d+)*/g, ' ')
+    .replace(/\b(final|shooting|production|white|blue|pink|yellow|green|goldenrod|buff|salmon|cherry|revised|revision|rev|draft|drft|version|ver|v|copy|backup|old|new|edit|edited|polish|pass|notes?|fdx|fountain|pdf|screenplay|script|teleplay|spec)\b\.?\s*[#-]?\s*\d*([.-]\d+)*/g, ' ')
     .replace(/\b\d{1,4}[-_./]\d{1,2}[-_./]\d{1,4}\b/g, ' ')
     .replace(/\b(19|20)\d{2}\b/g, ' ')
     .replace(/\b\d+(st|nd|rd|th)\b/g, ' ')
@@ -181,6 +181,7 @@ export function projectNameFrom(title: string): string {
     .replace(/\b(white|blue|pink|yellow|green|goldenrod|buff|salmon|cherry)\s+(revision|rev|pages?|draft)\b/gi, ' ')
     .replace(/\b(draft|drft|rev|revision|version|ver|v)\s*[#-]?\s*\d+([.-]\d+)*\b/gi, ' ')
     .replace(/\b(final|shooting|production|revised|copy|backup)\b(\s+(draft|script))?/gi, ' ')
+    .replace(/\b(screenplay|teleplay|script|spec script)\b/gi, ' ') // "Charlotte Screenplay" and "Charlotte" are one project
     .replace(/\b\d{1,4}[-_./]\d{1,2}[-_./]\d{1,4}\b/g, ' ')
     .replace(/\s+[-–—:]+\s*$/, '')
     .replace(/^\s*[-–—:]+\s+/, '')
@@ -292,6 +293,16 @@ export function matchExisting(plan: PlannedProject[], existing: ProjectInfo[]): 
 
 // ── Building ───────────────────────────────────────────────────────────────
 
+/**
+ * What an imported script is saved with: the parsed document, the file's own settings, and the standard scene-heading
+ * spacing already chosen — otherwise every imported script asks "Use standard scene heading spacing? Keep one line /
+ * Reformat" the first time it opens (utils/elementSpacing predatesStandardSceneSpacing). `null` = follow the formatting
+ * template, which is what Reformat picks (Christian 2026-11-14: "auto reformat all the scripts … so I don't have to").
+ */
+export function importedContent(doc: unknown, metadata?: Record<string, unknown>): Record<string, unknown> {
+  return { ...(doc as Record<string, unknown>), ...(metadata ?? {}), _sceneHeadingSpaceBefore: null };
+}
+
 export interface BuildClient {
   createProject: (name: string) => Promise<ProjectInfo>;
   createScript: (projectId: string, data: { title: string; content?: unknown }) => Promise<ScriptResponse>;
@@ -331,7 +342,7 @@ export async function buildProjects(
     for (const c of files) {
       const title = (titleCount.get(c.title.toLowerCase()) || 0) > 1 ? fallbackTitle(c.name) : c.title;
       try {
-        await client.createScript(projectId, { title, content: { ...(c.doc as Record<string, unknown>), ...(c.metadata ?? {}) } });
+        await client.createScript(projectId, { title, content: importedContent(c.doc, c.metadata) });
         made += 1;
       } catch (err) {
         result.failed.push({ name: c.name, error: err instanceof Error ? err.message : String(err) });

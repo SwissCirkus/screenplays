@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, type ProjectInfo, type ScriptMeta } from '../services/api';
 import { useProjectStore } from '../stores/projectStore';
-import { leaveEditor } from '../services/pendingSave';
+import { leaveEditor, CLOSE_DELETED_DOCUMENT_EVENT } from '../services/pendingSave';
 import { addProjectLink, openLinkInNewTab, readProjectLink, type ProjectAsset } from '../services/projectLinks';
 import {
   dragMayCarryLink, isLinkAsset, linkDisplayName, linkFromDataTransfer, linkIcon, linkKind, normalizeLinkUrl,
@@ -220,8 +220,10 @@ const NavigatorProjects: React.FC = () => {
       : t('navigator.projects.deleteProjectConfirmCount', { name: project.name, scripts: count });
     if (!window.confirm(question)) return;
     try {
-      // The open script belongs to it: leave the editor first, so nothing is saved back into a deleted project.
-      if (currentProject?.id === project.id) await leaveEditor(() => navigate('/projects'));
+      // The open script belongs to it: close it first, so nothing is saved back into a deleted project — but stay in the
+      // writer, on a blank page with the Navigator as it was (Christian 2026-11-14: "just delete it and keep me where I
+      // already was", not the Manage Projects screen).
+      if (currentProject?.id === project.id) await leaveEditor(() => window.dispatchEvent(new Event(CLOSE_DELETED_DOCUMENT_EVENT)));
       await api.deleteProject(project.id);
       showToast(t('navigator.projects.projectDeleted', { name: project.name }), 'success');
       await reloadProjects();
@@ -266,7 +268,8 @@ const NavigatorProjects: React.FC = () => {
     if (!window.confirm(t('navigator.projects.deleteScriptConfirm', { name: script.title || t('navigator.projects.untitled') }))) return;
     try {
       if (currentProject?.id === projectId && currentScriptId === script.id) {
-        await leaveEditor(() => navigate(`/project/${projectId}`, { state: { from: '/projects' } }));
+        // Close the deleted script but stay in the writer (not the project page) — see deleteProject.
+        await leaveEditor(() => window.dispatchEvent(new Event(CLOSE_DELETED_DOCUMENT_EVENT)));
       }
       await api.deleteScript(projectId, script.id);
       showToast(t('navigator.projects.scriptDeleted', { name: script.title }), 'success');
@@ -355,8 +358,87 @@ const NavigatorProjects: React.FC = () => {
     { label: L('removeLink'), danger: true, onSelect: () => { void removeLink(projectId, asset); } },
   ];
 
+  // ── Moving scripts between projects by dragging (SwissCirkus, Christian 2026-11-14: "drag those scripts from one folder
+  //    into another and rearrange it"). A script dropped on another project moves there; a whole project dropped on
+  //    another merges into it (asks first). A move is copy-then-delete: the script's text and settings go with it, its
+  //    version history stays with the old project.
+  const moveScriptTo = async (fromId: string, scriptId: string, toId: string): Promise<boolean> => {
+    if (fromId === toId) return false;
+    const full = await api.getScript(fromId, scriptId);
+    const wasOpen = currentProject?.id === fromId && currentScriptId === scriptId;
+    if (wasOpen) await leaveEditor(() => {}); // save what's on screen first
+    const fresh = wasOpen ? await api.getScript(fromId, scriptId) : full;
+    const made = await api.createScript(toId, {
+      title: fresh.meta.title, format: fresh.meta.format, content: (fresh.content ?? undefined) as Record<string, unknown> | undefined,
+    });
+    await api.deleteScript(fromId, scriptId);
+    if (wasOpen) {
+      const target = (projects ?? []).find((p) => p.id === toId);
+      if (target) openScript(toId, made.meta);
+    }
+    return true;
+  };
+
+  const moveScript = async (fromId: string, scriptId: string, toId: string) => {
+    try {
+      const title = contents[fromId]?.scripts.find((s) => s.id === scriptId)?.title || t('navigator.projects.untitled');
+      if (!(await moveScriptTo(fromId, scriptId, toId))) return;
+      const to = (projects ?? []).find((p) => p.id === toId)?.name || '';
+      showToast(`Moved “${title}” to ${to}`, 'success'); // i18n-ignore: SwissCirkus
+      await Promise.all([refreshProject(fromId), refreshProject(toId)]);
+      openFolder(toId);
+    } catch (err) {
+      failed(err);
+      await reloadProjects();
+    }
+  };
+
+  const mergeProject = async (fromId: string, toId: string) => {
+    const from = (projects ?? []).find((p) => p.id === fromId);
+    const to = (projects ?? []).find((p) => p.id === toId);
+    if (!from || !to || fromId === toId) return;
+    try {
+      const scripts = await api.listScripts(fromId);
+      if (!window.confirm(`Move all ${scripts.length} script${scripts.length === 1 ? '' : 's'} of “${from.name}” into “${to.name}”, then delete the empty “${from.name}”?`)) return; // i18n-ignore: SwissCirkus
+      for (const s of scripts) await moveScriptTo(fromId, s.id, toId);
+      const left = await api.listScripts(fromId);
+      if (left.length === 0) await api.deleteProject(fromId);
+      showToast(`Merged “${from.name}” into “${to.name}”`, 'success'); // i18n-ignore: SwissCirkus
+      await reloadProjects();
+      openFolder(toId);
+    } catch (err) {
+      failed(err);
+      await reloadProjects();
+    }
+  };
+
+  const DRAG_SCRIPT = 'application/x-screenplays-script';
+  const DRAG_PROJECT = 'application/x-screenplays-project';
+  const dragScriptProps = (projectId: string, scriptId: string) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.setData(DRAG_SCRIPT, JSON.stringify({ projectId, scriptId }));
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+    },
+  });
+  const dragProjectProps = (projectId: string) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.setData(DRAG_PROJECT, projectId);
+      e.dataTransfer.effectAllowed = 'move';
+    },
+  });
+
   const dropProps = (projectId: string) => ({
     onDragOver: (e: React.DragEvent) => {
+      const types = Array.from(e.dataTransfer.types || []);
+      if (types.includes(DRAG_SCRIPT) || types.includes(DRAG_PROJECT)) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dropTarget !== projectId) setDropTarget(projectId);
+        return;
+      }
       if (!dragMayCarryLink(e.dataTransfer.types)) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'link';
@@ -367,6 +449,18 @@ const NavigatorProjects: React.FC = () => {
     },
     onDrop: (e: React.DragEvent) => {
       setDropTarget(null);
+      const script = e.dataTransfer.getData(DRAG_SCRIPT);
+      if (script) {
+        e.preventDefault(); e.stopPropagation();
+        try { const { projectId: from, scriptId } = JSON.parse(script); void moveScript(from, scriptId, projectId); } catch { /* not ours */ }
+        return;
+      }
+      const project = e.dataTransfer.getData(DRAG_PROJECT);
+      if (project) {
+        e.preventDefault(); e.stopPropagation();
+        void mergeProject(project, projectId);
+        return;
+      }
       const link = linkFromDataTransfer(e.dataTransfer);
       if (!link) return;
       e.preventDefault();
@@ -437,6 +531,7 @@ const NavigatorProjects: React.FC = () => {
                 className={`nav-project-row${isCurrent ? ' current' : ''}`}
                 role="button"
                 tabIndex={0}
+                {...(renamingThis ? {} : dragProjectProps(project.id))}
                 aria-expanded={folderOpen}
                 onClick={() => { if (!renamingThis) toggle(project.id); }}
                 onContextMenu={(e) => openMenu(e, projectItems(project))}
@@ -480,6 +575,7 @@ const NavigatorProjects: React.FC = () => {
                             key={s.id}
                             type="button"
                             className={`nav-project-item${isOpenScript ? ' current' : ''}`}
+                            {...dragScriptProps(project.id, s.id)}
                             onClick={() => openScript(project.id, s)}
                             onContextMenu={(e) => openMenu(e, scriptItems(project.id, s))}
                             onKeyDown={(e) => { if (e.key === 'F2') { e.preventDefault(); startRename({ kind: 'script', projectId: project.id, id: s.id }, s.title); } }}

@@ -71,3 +71,13 @@
 .bulk-actions .bulk-muted { margin-right: auto; }
 .bulk-done-list { margin: 0 0 8px; padding-left: 18px; }
 .bulk-link { border: none; background: none; padding: 0; color: var(--fd-accent); font-size: 13px; cursor: pointer; text-decoration: underline; }
+/* Dragging scripts between planned projects */
+.bulk-draggable { cursor: grab; border-radius: 4px; }
+.bulk-draggable:hover { background: var(--fd-overlay-subtle); }
+.bulk-draggable:active { cursor: grabbing; }
+.bulk-project.drop { border-color: var(--fd-accent); background: var(--fd-overlay-light); }
+.bulk-new-drop {
+  padding: 10px; border: 1px dashed var(--fd-overlay-medium); border-radius: 8px;
+  text-align: center; font-size: 12.5px; color: var(--fd-text-muted);
+}
+.bulk-new-drop.drop { border-color: var(--fd-accent); color: var(--fd-text); background: var(--fd-overlay-light); }

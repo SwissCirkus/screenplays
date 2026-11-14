@@ -48,7 +48,7 @@ import type { Editor as TiptapEditor } from '@tiptap/react';
 const exportJSON = (editor: TiptapEditor) => withoutSuggestionsJSON(editor.getJSON());
 import { downloadFDX } from '../utils/fdxExporter';
 import { downloadFountain, exportFountain } from '../utils/fountainExporter';
-import { kontrollSendToStoryBuilder, useKontrollBridge } from '../services/kontrollBridge';
+import { kontrollOpenInBrowser, kontrollSendToStoryBuilder, useKontrollBridge } from '../services/kontrollBridge';
 import { exportFadeIn } from '../utils/osfExporter';
 import {
   serializeContentForFormat, extensionOfPath, isLinkableExtension, normalizeLinkedFormat, linkedFileName,
@@ -88,7 +88,7 @@ import { isAiProviderConfigured, useVoiceSettingsStore } from '../stores/voiceSe
 import { activeEngineKind } from '../services/tts/engines';
 import AuthIndicator from './AuthIndicator';
 import { useNavigate } from 'react-router-dom';
-import { flushPendingSave, setLeaveGuard, leaveEditor as leaveEditorScreen } from '../services/pendingSave';
+import { flushPendingSave, setLeaveGuard, leaveEditor as leaveEditorScreen, CLOSE_DELETED_DOCUMENT_EVENT } from '../services/pendingSave';
 import { scriptApi } from '../services/scriptApi';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useWritingGoalsStore } from '../stores/writingGoalsStore';
@@ -215,6 +215,7 @@ import {
   FaBoxes,
   FaBars,
   FaMagic,
+  FaGlobe,
   FaInfoCircle,
   FaBook,
   FaStethoscope,
@@ -1931,6 +1932,22 @@ const MenuBar: React.FC<MenuBarProps> = ({
     });
   }, [confirmOrRun, editor, resetForNewScreenplay]);
 
+  // SwissCirkus (Christian 2026-11-14): deleting the open script — or its project — from the Navigator's Projects tab
+  // closes it right here, like File › Close (already saved by the caller, so no question), instead of sending the writer
+  // to another screen.
+  useEffect(() => {
+    const onClose = () => {
+      if (!editor) return;
+      resetForNewScreenplay();
+      editor.commands.setContent({ type: 'doc', content: [{ type: 'action', content: [] }] }, true);
+      clearEditorHistory(editor);
+      clearRecoverySnapshot();
+      releaseOpenDocument();
+    };
+    window.addEventListener(CLOSE_DELETED_DOCUMENT_EVENT, onClose);
+    return () => window.removeEventListener(CLOSE_DELETED_DOCUMENT_EVENT, onClose);
+  }, [editor, resetForNewScreenplay]);
+
   // ── File › Delete Script… ──
   // Only a script in the library: a file opened in place has nothing there to
   // delete, and deleting the writer's own file from a menu is not this item.
@@ -2169,6 +2186,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
 
   // SwissCirkus fork: inside Kontroll, hand the script to Story Builder as a new script revision (Kontroll says it can in hello).
   const kontrollStory = useKontrollBridge((s) => s.hello?.story === true);
+  const kontrollBrowser = useKontrollBridge((s) => s.hello?.browser === true);
   const handleSendToStoryBuilder = useCallback(async () => {
     if (!editor) return;
     const fountain = exportFountain(exportJSON(editor), {
@@ -4185,6 +4203,19 @@ const MenuBar: React.FC<MenuBarProps> = ({
           }}
         >
           <FaMagic /> <span className="menu-assistant-label">{t('addons:scriptAssistant.button')}</span>
+        </button>
+      )}
+      {/* SwissCirkus (Christian 2026-11-14): inside Kontroll, open this same page in the computer's web browser. */}
+      {kontrollBrowser && (
+        <button
+          type="button"
+          className="menu-browser-btn"
+          title="Open this page in your web browser" // i18n-ignore: Kontroll-only
+          aria-label="Open in web browser" // i18n-ignore: Kontroll-only
+          onMouseDown={keepEditorSelection}
+          onClick={() => { setActiveMenu(null); void kontrollOpenInBrowser(window.location.href); }}
+        >
+          <FaGlobe />
         </button>
       )}
       {browserLibrary() ? <>{collabServerHttp() && <AuthIndicator />}<DriveIndicator /></> : <AuthIndicator />}

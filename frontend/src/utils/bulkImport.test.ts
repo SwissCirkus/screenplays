@@ -61,7 +61,7 @@ describe('bulk import: reading the files', () => {
 
 describe('bulk import: plans', () => {
   it('scriptKey strips drafts, revisions, colours, dates and copies', () => {
-    for (const t of ['Goldpaw', 'GOLDPAW - Draft 5', 'Goldpaw_v2', 'Goldpaw (2)', 'Goldpaw Rev. 3', 'Goldpaw BLUE revision', 'Goldpaw 2024-03-11', 'goldpaw - copy', 'Goldpaw final draft']) {
+    for (const t of ['Goldpaw', 'GOLDPAW - Draft 5', 'Goldpaw_v2', 'Goldpaw (2)', 'Goldpaw Rev. 3', 'Goldpaw BLUE revision', 'Goldpaw 2024-03-11', 'goldpaw - copy', 'Goldpaw final draft', 'Goldpaw Screenplay', 'GOLDPAW script v3']) {
       expect(scriptKey(t), t).toBe('goldpaw');
     }
     expect(scriptKey('The Lighthouse')).not.toBe(scriptKey('Goldpaw'));
@@ -72,6 +72,7 @@ describe('bulk import: plans', () => {
     expect(projectNameFrom('The Lighthouse_v3 (2)')).toBe('The Lighthouse');
     expect(projectNameFrom('Night Shift BLUE revision 2024-03-11')).toBe('Night Shift');
     expect(projectNameFrom('Draft 2')).toBe('Draft 2');
+    expect(projectNameFrom('Charlotte Screenplay')).toBe('Charlotte');
   });
 
   it('as they are: each dropped folder is a project, loose files go into one', () => {
@@ -133,5 +134,18 @@ describe('bulk import: building', () => {
     expect(calls).toEqual(['project Goldpaw', 'script p1 Goldpaw Draft 2', 'script p1 Goldpaw Draft 5', 'script pX Lighthouse', 'script pX Boom']);
     expect(r.projects).toEqual([{ id: 'p1', name: 'Goldpaw', created: true, scripts: 2 }, { id: 'pX', name: 'Lighthouse', created: false, scripts: 1 }]);
     expect(r.failed).toEqual([{ name: 'Boom.fountain', error: 'disk full' }]);
+  });
+});
+
+describe('bulk import: no Reformat question', () => {
+  it('imported scripts are saved with the standard scene-heading spacing already chosen', async () => {
+    const { importedContent } = await import('./bulkImport');
+    const { predatesStandardSceneSpacing } = await import('./elementSpacing');
+    const c = importedContent({ type: 'doc', content: [] }, { _revisionMode: true });
+    expect(c._sceneHeadingSpaceBefore).toBeNull();
+    expect(c._revisionMode).toBe(true);
+    expect(predatesStandardSceneSpacing(c)).toBe(false);
+    // what the old import saved — the editor asked Keep / Reformat for it
+    expect(predatesStandardSceneSpacing({ type: 'doc', content: [], _revisionMode: true })).toBe(true);
   });
 });

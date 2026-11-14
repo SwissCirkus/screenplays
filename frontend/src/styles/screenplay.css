@@ -512,6 +512,15 @@ body {
 .menu-assistant-btn:hover { background: var(--fd-overlay-light); }
 .menu-assistant-btn svg { color: var(--fd-accent); }
 .menu-bar.chrome-comfortable .menu-assistant-btn { height: 32px; font-size: 13px; }
+/* Open in web browser (inside Kontroll), beside the Assistant button. */
+.menu-browser-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 28px; height: 22px; margin-right: 6px; padding: 0;
+  border: 1px solid var(--fd-overlay-medium); border-radius: 6px;
+  background: transparent; color: var(--fd-text-muted); font-size: 12px; cursor: pointer;
+}
+.menu-browser-btn:hover { background: var(--fd-overlay-light); color: var(--fd-text); }
+.menu-bar.chrome-comfortable .menu-browser-btn { width: 34px; height: 32px; font-size: 14px; }
 @media (max-width: 600px) { .menu-assistant-label { display: none; } }
 
 /* Leading "back to the project" control, shown only for a script that is

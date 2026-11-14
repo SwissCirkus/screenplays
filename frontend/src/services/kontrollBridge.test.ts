@@ -19,10 +19,10 @@ describe('the Kontroll mailbox (window.__kScreen)', () => {
     expect(box.take()).toEqual([{ kind: 'hello' }]);
 
     // Kontroll's hello, exactly the shape app.js screenHello sends.
-    box.hello({ engines: [{ id: 'claude-sonnet', label: 'Claude Sonnet' }, { bad: 1 }], engine: '', fallback: 'claude-sonnet', docs: true, open: true, story: true, mic: true });
+    box.hello({ engines: [{ id: 'claude-sonnet', label: 'Claude Sonnet' }, { bad: 1 }], engine: '', fallback: 'claude-sonnet', docs: true, open: true, story: true, mic: true, browser: true });
     expect(bridge.inKontroll()).toBe(true);
     expect(bridge.useKontrollBridge.getState().hello).toEqual({
-      engines: [{ id: 'claude-sonnet', label: 'Claude Sonnet' }], engine: '', fallback: 'claude-sonnet', docs: true, open: true, story: true, mic: true,
+      engines: [{ id: 'claude-sonnet', label: 'Claude Sonnet' }], engine: '', fallback: 'claude-sonnet', docs: true, open: true, story: true, mic: true, browser: true,
     });
 
     const pending = bridge.kontrollAi('SYS', 'USER', 'gpt-5', 32000);
@@ -69,7 +69,7 @@ describe('the Kontroll mailbox (window.__kScreen)', () => {
     const { readHello } = await import('./kontrollBridge');
     expect(readHello(null)).toBeNull();
     expect(readHello('x')).toBeNull();
-    expect(readHello({})).toEqual({ engines: [], engine: '', fallback: '', docs: false, open: false, story: false, mic: false });
+    expect(readHello({})).toEqual({ engines: [], engine: '', fallback: '', docs: false, open: false, story: false, mic: false, browser: false });
   });
 });
 

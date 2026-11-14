@@ -31,6 +31,7 @@ type Stage =
   | { kind: 'done'; result: BuildResult };
 
 const LOOSE_NAME = 'Imported scripts'; // i18n-ignore: default project name
+const DRAG_FILE = 'application/x-screenplays-import-file';
 
 interface Props {
   projects: ProjectInfo[];
@@ -49,6 +50,7 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
   const [thinking, setThinking] = useState(false);
   const [smartNote, setSmartNote] = useState('');
   const filesInput = useRef<HTMLInputElement>(null);
+  const [dropAt, setDropAt] = useState<string | null>(null);
   const folderInput = useRef<HTMLInputElement>(null);
 
   const readable = useMemo(() => cands.filter((c) => !c.error), [cands]);
@@ -127,6 +129,25 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
   };
 
   const left = readable.filter((c) => !plan.some((p) => p.fileIds.includes(c.id)));
+
+  // Drag a script onto another project (or onto "Left out" / "New project") to move it (Christian 2026-11-14).
+  const dropOn = (to: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!Array.from(e.dataTransfer.types || []).includes(DRAG_FILE)) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+      if (dropAt !== to) setDropAt(to);
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) setDropAt(null);
+    },
+    onDrop: (e: React.DragEvent) => {
+      const id = e.dataTransfer.getData(DRAG_FILE);
+      setDropAt(null);
+      if (!id) return;
+      e.preventDefault();
+      moveFile(id, to);
+    },
+  });
 
   const build = async () => {
     const total = placed;
@@ -226,7 +247,7 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
 
       <div className="bulk-projects">
         {plan.map((p, i) => (
-          <div key={i} className="bulk-project">
+          <div key={i} className={`bulk-project${dropAt === String(i) ? ' drop' : ''}`} {...dropOn(String(i))}>
             <div className="bulk-project-head">
               <input
                 className="bulk-name"
@@ -242,7 +263,7 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
                 const c = byId.get(id);
                 if (!c) return null;
                 return (
-                  <li key={id}>
+                  <li key={id} draggable={!building} onDragStart={(e) => { e.dataTransfer.setData(DRAG_FILE, id); e.dataTransfer.effectAllowed = 'move'; }} className="bulk-draggable">
                     <span className="bulk-file" title={c.folder ? `${c.folder}/${c.name}` : c.name}>{c.title}</span>
                     <span className="bulk-muted bulk-file-meta">{c.name}{c.draft ? ` · ${c.draft}` : ''}{c.scenes ? ` · ${c.scenes} scenes` : ''}</span>{/* i18n-ignore */}
                     <select className="bulk-move" value={String(i)} disabled={building} onChange={(e) => moveFile(id, e.target.value)} aria-label={`Project for ${c.name}`}>{/* i18n-ignore */}
@@ -256,12 +277,17 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
             </ul>
           </div>
         ))}
+        {!building && (
+          <div className={`bulk-new-drop${dropAt === '__new' ? ' drop' : ''}`} {...dropOn('__new')}>
+            Drag a script here to start a new project · drag scripts between projects to regroup them{/* i18n-ignore */}
+          </div>
+        )}
         {left.length > 0 && (
-          <div className="bulk-project bulk-left">
+          <div className={`bulk-project bulk-left${dropAt === '__skip' ? ' drop' : ''}`} {...dropOn('__skip')}>
             <div className="bulk-project-head"><span>Left out · {left.length}</span></div>{/* i18n-ignore */}
             <ul className="bulk-files">
               {left.map((c) => (
-                <li key={c.id}>
+                <li key={c.id} draggable={!building} onDragStart={(e) => { e.dataTransfer.setData(DRAG_FILE, c.id); e.dataTransfer.effectAllowed = 'move'; }} className="bulk-draggable">
                   <span className="bulk-file">{c.title}</span>
                   <span className="bulk-muted bulk-file-meta">{c.name}</span>
                   <select className="bulk-move" value="__skip" disabled={building} onChange={(e) => moveFile(c.id, e.target.value)} aria-label={`Project for ${c.name}`}>{/* i18n-ignore */}

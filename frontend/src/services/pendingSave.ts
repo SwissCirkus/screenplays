@@ -20,6 +20,12 @@ type Flush = () => Promise<void>;
 let flush: Flush | null = null;
 
 /**
+ * SwissCirkus: the open script (or its project) was just deleted from the Navigator — close it in place, like
+ * File › Close, without leaving the writer (MenuBar listens). Dispatch it after leaveEditor() has saved.
+ */
+export const CLOSE_DELETED_DOCUMENT_EVENT = 'screenplays:close-deleted-document';
+
+/**
  * Register the open editor's flush. Returns an unregister function; call it on
  * unmount so a torn-down editor is never asked to save (its document is gone,
  * and saving an empty one would overwrite the real file).

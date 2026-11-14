@@ -61,8 +61,9 @@ export async function importScriptFiles(
       const title = imported.title || fallbackTitle(file.name);
       const resp = await client.createScript(projectId, {
         title,
-        // The file's revisions and scene numbering travel with it.
-        content: { ...(imported.doc as Record<string, unknown>), ...(imported.metadata ?? {}) },
+        // The file's revisions and scene numbering travel with it; standard scene-heading spacing is chosen up front
+        // (SwissCirkus — no "Reformat?" question on every imported script).
+        content: { ...(imported.doc as Record<string, unknown>), ...(imported.metadata ?? {}), _sceneHeadingSpaceBefore: null },
       });
       result.created.push({ id: resp.meta.id, title });
     } catch (err) {

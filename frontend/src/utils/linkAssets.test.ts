@@ -164,9 +164,12 @@ describe('Navigator › Projects right-click menus (what Manage Projects can do)
       'api.createScript(projectId', 'api.saveScript(projectId, scriptId, { title })', 'api.duplicateScript(projectId, script.id)',
       'api.deleteScript(projectId, script.id)']) expect(tab).toContain(call);
   });
-  it('deleting always asks first, and leaves the editor before deleting what is open', () => {
-    expect(tab).toMatch(/if \(!window\.confirm\(question\)\) return;[\s\S]{0,200}if \(currentProject\?\.id === project\.id\) await leaveEditor\(\(\) => navigate\('\/projects'\)\);\s*await api\.deleteProject/);
-    expect(tab).toMatch(/deleteScriptConfirm[\s\S]{0,300}await leaveEditor\(\(\) => navigate\(`\/project\/\$\{projectId\}`[\s\S]{0,120}await api\.deleteScript/);
+  // Christian 2026-11-14: "just delete it and keep me where I already was" — what is open is saved and closed in place
+  // (MenuBar's close-in-place, like File > Close), never a trip to Manage Projects or the project page.
+  it('deleting always asks first, and closes what is open in place before deleting it', () => {
+    expect(tab).toMatch(/if \(!window\.confirm\(question\)\) return;[\s\S]{0,400}if \(currentProject\?\.id === project\.id\) await leaveEditor\(\(\) => window\.dispatchEvent\(new Event\(CLOSE_DELETED_DOCUMENT_EVENT\)\)\);\s*await api\.deleteProject/);
+    expect(tab).toMatch(/deleteScriptConfirm[\s\S]{0,400}await leaveEditor\(\(\) => window\.dispatchEvent\(new Event\(CLOSE_DELETED_DOCUMENT_EVENT\)\)\);[\s\S]{0,40}await api\.deleteScript/);
+    expect(src('../components/MenuBar.tsx')).toMatch(/window\.addEventListener\(CLOSE_DELETED_DOCUMENT_EVENT, onClose\)/);
   });
   it('uses Manage Projects\' own colours, and a new script starts as an empty screenplay', async () => {
     const { PROJECT_COLORS, EMPTY_SCREENPLAY } = await import('./projectRoutes');
