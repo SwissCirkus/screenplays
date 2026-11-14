@@ -1657,22 +1657,18 @@ body {
   color: var(--fd-accent);
   border-bottom-color: var(--fd-accent);
 }
-/* When the tabs collectively overflow the panel width, scroll them
-   horizontally while keeping the close button visible (it lives outside
-   the scroll container, pinned at the right). */
+/* When the tabs don't fit the panel width they wrap onto a second row (and more, in a very narrow panel) instead of
+   scrolling sideways (SwissCirkus fork, Christian 2026-11-15: "put that onto two rows"). The close button stays pinned at
+   the right, outside this container. */
 .navigator-tabs-scroll {
   flex: 1 1 auto;
   display: flex;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  overflow: hidden;
   min-width: 0;
 }
-.navigator-tabs-scroll::-webkit-scrollbar { height: 4px; }
-.navigator-tabs-scroll::-webkit-scrollbar-thumb {
-  background: var(--fd-border);
-  border-radius: 2px;
-}
+.navigator-tabs-scroll > .navigator-tab { min-height: 34px; padding-top: 8px; padding-bottom: 8px; }
 .navigator-close {
   background: none;
   border: none;
@@ -15734,3 +15730,19 @@ html.foldable.wide .fold-panel-content .plugin-panel-tabs__content { flex: 1; wi
     outline-offset: 2px;
   }
 }
+
+
+/* ── Kontroll's scroll bars everywhere (SwissCirkus fork, Christian 2026-11-15: "our standard scroll bar … no rounded corners
+   and no arrows"): 14 px, a flat grey bar on a faint track, square, no arrow buttons — as Kontroll's sliders.css. !important
+   because some panels styled their own; scrollbar-width / -color are reset because Chromium lets those win over these. */
+* { scrollbar-width: auto !important; scrollbar-color: auto !important; }
+::-webkit-scrollbar { width: 14px !important; height: 14px !important; }
+::-webkit-scrollbar-track { background: color-mix(in srgb, var(--fd-text, #e8e8e8) 6%, transparent) !important; border: 0 !important; border-radius: 0 !important; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--fd-text, #e8e8e8) 26%, transparent) !important; border: 0 !important; border-radius: 0 !important;
+  background-clip: border-box !important; min-height: 24px; min-width: 24px;
+}
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--fd-text, #e8e8e8) 38%, transparent) !important; }
+::-webkit-scrollbar-thumb:active { background: color-mix(in srgb, var(--fd-text, #e8e8e8) 46%, transparent) !important; }
+::-webkit-scrollbar-button { display: none !important; width: 0 !important; height: 0 !important; }
+::-webkit-scrollbar-corner { background: transparent !important; }
