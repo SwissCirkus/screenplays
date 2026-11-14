@@ -1,17 +1,24 @@
 /* ============ BRING IN YOUR SCRIPTS (SwissCirkus fork) ============ */
+/* A big centred square-ish target, not a strip (Christian 2026-11-14): icon on top, words in the middle, buttons below.
+   With no projects yet it takes the page's middle (in place of "No projects yet"); with projects it stays this shape,
+   just shorter, so the projects still show. */
 .bulk-drop {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  margin: 0 0 18px; padding: 16px 18px;
-  border: 2px dashed var(--fd-overlay-medium); border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  width: min(760px, 100%); min-height: 240px; box-sizing: border-box;
+  margin: 8px auto 24px; padding: 28px 32px; text-align: center;
+  border: 2px dashed var(--fd-overlay-medium); border-radius: 14px;
   background: var(--fd-overlay-subtle); color: var(--fd-text);
   transition: border-color .12s, background .12s;
 }
+.bulk-drop.big { min-height: 420px; margin-top: 24px; }
 .bulk-drop.over { border-color: var(--fd-accent); background: var(--fd-overlay-light); }
 .bulk-drop.busy { border-style: solid; opacity: .85; }
-.bulk-drop-icon { font-size: 26px; color: var(--fd-accent); flex-shrink: 0; }
-.bulk-drop-text { flex: 1; min-width: 220px; font-size: 14px; line-height: 1.45; }
-.bulk-drop-sub { display: block; margin-top: 2px; font-size: 12.5px; color: var(--fd-text-muted); }
-.bulk-drop-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.bulk-drop-icon { font-size: 44px; color: var(--fd-accent); flex-shrink: 0; }
+.bulk-drop.big .bulk-drop-icon { font-size: 56px; }
+.bulk-drop-text { max-width: 520px; font-size: 15px; line-height: 1.5; }
+.bulk-drop-sub { display: block; margin-top: 6px; font-size: 12.5px; color: var(--fd-text-muted); }
+.bulk-drop-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.bulk-drop.big .bulk-drop-buttons .bulk-btn { height: 34px; padding: 0 16px; font-size: 13.5px; }
 
 .bulk-btn {
   display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;

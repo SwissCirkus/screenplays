@@ -725,6 +725,9 @@ const ProjectList: React.FC = () => {
           <div className="project-list-empty-icon">&#9888;</div>
           <div>{errorMsg}</div>
         </div>
+      ) : projects.length === 0 && source === 'local' ? (
+        // The big "Bring in your scripts" box above stands in for "No projects yet" (SwissCirkus).
+        null
       ) : projects.length === 0 ? (
         <div className="project-list-empty">
           <div className="project-list-empty-icon">&#128209;</div>

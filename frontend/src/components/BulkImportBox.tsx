@@ -172,7 +172,7 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
   if (stage.kind === 'idle' || stage.kind === 'reading') {
     return (
       <div
-        className={`bulk-drop${over ? ' over' : ''}${stage.kind === 'reading' ? ' busy' : ''}`}
+        className={`bulk-drop${projects.length === 0 ? ' big' : ''}${over ? ' over' : ''}${stage.kind === 'reading' ? ' busy' : ''}`}
         onDragOver={(e) => { if (e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); setOver(true); } }}
         onDragLeave={() => setOver(false)}
         onDrop={async (e) => {
