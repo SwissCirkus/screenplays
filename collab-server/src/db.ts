@@ -220,6 +220,7 @@ export async function initDB(): Promise<DBAdapter> {
       database: config.dbName,
       user: config.dbUser,
       password: config.dbPassword,
+      ssl: config.dbSsl,
     });
   } else {
     console.log(`Using SQLite database in ${config.dataDir}`);

@@ -636,6 +636,8 @@ router.get('/me', requireAuth, async (req, res) => {
 router.get('/config', (req, res) => {
   res.json({
     googleEnabled: Boolean(config.googleClientId),
+    // The public client id, so the web app's Sign in with Google uses the same client this server verifies.
+    googleClientId: config.googleClientId || '',
     emailVerificationRequired: Boolean(config.smtpHost),
     // Whether outbound email is wired up. UI gates 2FA on this — without
     // SMTP, the new-device code can't be delivered, so enabling it would

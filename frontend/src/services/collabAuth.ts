@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getApiBase } from '../config';
+import { getAuthBase } from '../config';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { CollabAuth, CollabUser } from '../stores/settingsStore';
 import { platformFetch } from './platform';
@@ -56,11 +56,11 @@ async function parseError(res: Response, fallbackLabel: string): Promise<AuthHtt
  * backend rather than a raw browser "Failed to fetch".
  */
 async function backendAuthRequest<T>(path: string, options?: RequestInit): Promise<T> {
-  const base = getApiBase();
+  const base = getAuthBase();
   if (!base) {
     throw new Error(t('messages:cloud.notConfigured'));
   }
-  const url = `${base}/auth${path}`;
+  const url = `${base}${path}`;
   let res: Response;
   try {
     // platformFetch tunnels through Tauri's http_fetch invoke when running
@@ -82,11 +82,11 @@ async function backendAuthRequest<T>(path: string, options?: RequestInit): Promi
 }
 
 async function backendAuthRequestRaw(path: string, options?: RequestInit): Promise<Response> {
-  const base = getApiBase();
+  const base = getAuthBase();
   if (!base) {
     throw new Error(t('messages:cloud.notConfigured'));
   }
-  const url = `${base}/auth${path}`;
+  const url = `${base}${path}`;
   try {
     return await platformFetch(url, {
       ...options,
@@ -103,11 +103,11 @@ async function backendAuthRequestRaw(path: string, options?: RequestInit): Promi
 
 /** Same as backendAuthRequest but attaches the bearer token and refreshes on 401. */
 async function backendAuthedRequest<T>(path: string, options?: RequestInit): Promise<T> {
-  const base = getApiBase();
+  const base = getAuthBase();
   if (!base) {
     throw new Error(t('messages:cloud.notConfigured'));
   }
-  const url = `${base}/auth${path}`;
+  const url = `${base}${path}`;
   let res: Response;
   try {
     res = await authedFetch(url, {
@@ -195,6 +195,8 @@ export interface CollabServerConfig {
   emailVerificationRequired: boolean;
   /** Whether outbound SMTP is configured. When false, 2FA cannot be enabled. */
   smtpConfigured?: boolean;
+  /** SwissCirkus fork: the Google client the server verifies sign-ins against ('' when Google is off). */
+  googleClientId?: string;
 }
 
 export interface DeviceRecord {

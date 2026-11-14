@@ -27,6 +27,7 @@ export class PostgresAdapter implements DBAdapter {
     database: string;
     user: string;
     password: string;
+    ssl?: boolean;
   }) {
     this.pool = new Pool({
       host: opts.host,
@@ -34,6 +35,7 @@ export class PostgresAdapter implements DBAdapter {
       database: opts.database,
       user: opts.user,
       password: opts.password,
+      ...(opts.ssl ? { ssl: { rejectUnauthorized: true } } : {}),
       max: 20,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,

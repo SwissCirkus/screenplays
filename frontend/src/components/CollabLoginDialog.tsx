@@ -9,6 +9,7 @@ import { initDemoInfo, isDemoMode } from '../services/demoInfo';
 import { showToast } from './Toast';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { t as tr } from '../i18n';
+import { collabServerHttp } from '../config';
 
 interface CollabLoginDialogProps {
   onClose: () => void;
@@ -39,6 +40,8 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
   const [serverConfig, setServerConfig] = useState<CollabServerConfig | null>(null);
+  // Our own co-writing server with Google sign-in and no email sender: Google is the only way in.
+  const googleOnly = Boolean(collabServerHttp() && serverConfig?.googleEnabled && !serverConfig?.smtpConfigured);
   // Demo-mode flag comes from the backend (DEMO_MODE env var), not from a URL
   // string match. Triggers a re-render once initDemoInfo resolves.
   const [isDemoServer, setIsDemoServer] = useState<boolean>(isDemoMode());
@@ -204,7 +207,7 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
     setLoading(true);
     try {
       await loadGoogleScript();
-      const idToken = await getGoogleIdToken();
+      const idToken = await getGoogleIdToken(serverConfig?.googleClientId || '');
       const response = await collabAuthApi.loginWithGoogle(idToken);
       handleAuthResponse(response);
       showToast(t('login.toast.googleSignedIn'), 'success');
@@ -254,6 +257,8 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
             </div>
           )}
 
+          {/* SwissCirkus fork: our co-writing server signs in with Google only until it can send email. */}
+          {!googleOnly && (<>
           <div className="settings-auth-tabs">
             <button
               className={`settings-auth-tab ${tab === 'login' ? 'active' : ''}`}
@@ -521,10 +526,11 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
               {t('login.rememberHint')}
             </p>
           </div>
+          </>)}
 
           {serverConfig?.googleEnabled && (
             <div className="settings-google-section">
-              <div className="settings-divider"><span>{t('login.or')}</span></div>
+              {!googleOnly && <div className="settings-divider"><span>{t('login.or')}</span></div>}
               <button
                 className="dialog-btn settings-google-btn"
                 onClick={handleGoogleLogin}
@@ -565,12 +571,12 @@ function loadGoogleScript(): Promise<void> {
   });
 }
 
-function getGoogleIdToken(): Promise<string> {
+function getGoogleIdToken(clientId = ''): Promise<string> {
   return new Promise((resolve, reject) => {
     const google = (window as any).google;
     if (!google?.accounts?.id) { reject(new Error(tr('collab:login.google.notLoaded'))); return; }
     google.accounts.id.initialize({
-      client_id: '',
+      client_id: clientId,
       callback: (response: any) => {
         if (response.credential) resolve(response.credential);
         else reject(new Error(tr('collab:login.google.noCredential')));

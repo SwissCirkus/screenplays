@@ -38,6 +38,8 @@ export interface ServerConfig {
   dbName: string;
   dbUser: string;
   dbPassword: string;
+  /** Encrypt the database connection (hosted PostgreSQL such as Neon requires it). */
+  dbSsl: boolean;
 
   // Document eviction
   docIdleTimeoutMinutes: number;
@@ -100,6 +102,7 @@ function loadConfig(): ServerConfig {
     dbName: process.env.DB_NAME || 'opendraft_collab',
     dbUser: process.env.DB_USER || 'opendraft',
     dbPassword: process.env.DB_PASSWORD || '',
+    dbSsl: /^(1|true|require)$/i.test(process.env.DB_SSL || ''),
 
     // Document eviction (0 = disabled)
     docIdleTimeoutMinutes: parseInt(process.env.DOC_IDLE_TIMEOUT_MINUTES || '30', 10),

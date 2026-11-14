@@ -104,9 +104,32 @@ export const SERVER_BASE: string = API_BASE.replace(/\/api$/, '');
  *  to the VITE env var, then to the default.
  */
 const DEFAULT_COLLAB_WS = 'wss://collab.open-draft.com';
+
+/**
+ * SwissCirkus fork: the co-writing server (accounts, invites, live sync) for the
+ * web build, set at build time with VITE_COLLAB_SERVER=https://… — our own
+ * server (docs/COWRITING_SERVER_PLAN.md). '' when not set.
+ */
+export function collabServerHttp(): string {
+  const raw = String(import.meta.env.VITE_COLLAB_SERVER || '').trim().replace(/\/+$/, '');
+  if (!raw) return '';
+  const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+  return isTauri ? '' : raw;
+}
+
+/** Where account calls go: `<server>/auth` on our web build, else the backend's `/api/auth` proxy. */
+export function getAuthBase(): string {
+  const server = collabServerHttp();
+  if (server) return `${server}/auth`;
+  const base = getApiBase();
+  return base ? `${base}/auth` : '';
+}
+
 export function getCollabWsUrl(): string {
   const stored = localStorage.getItem('opendraft:collabServerUrl');
   if (stored) return stored;
+  const server = collabServerHttp();
+  if (server) return server.replace(/^http(s?):\/\//, 'ws$1://');
   return import.meta.env.VITE_COLLAB_WS_URL || DEFAULT_COLLAB_WS;
 }
 // Static alias kept for backward-compatible imports

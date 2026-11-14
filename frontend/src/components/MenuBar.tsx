@@ -139,6 +139,7 @@ import {
 } from '../utils/fileOps';
 import { isDesktopTauri, isWeb, browserLibrary, printRoute, supportsApplePencil, supportsMultipleWindows } from '../services/platform';
 import DriveIndicator from './DriveIndicator';
+import { collabServerHttp } from '../config';
 import { checkForUpdate } from '../services/updateCheck';
 import { getCompatEntries } from '../services/compat';
 import { reportSaveError } from '../stores/saveErrorStore';
@@ -4132,7 +4133,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
         </div>
       </div>
       <div className="menu-spacer" />
-      {browserLibrary() ? <DriveIndicator /> : <AuthIndicator />}
+      {browserLibrary() ? <>{collabServerHttp() && <AuthIndicator />}<DriveIndicator /></> : <AuthIndicator />}
     </>
   );
 

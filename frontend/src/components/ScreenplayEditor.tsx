@@ -346,6 +346,8 @@ const ALL_ELEMENT_TYPES: ElementType[] = [
  * refusal cannot raise the sign-in prompt.
  */
 async function fetchSharedScript(projectId: string, scriptId: string, collabWsUrl = getCollabWsUrl()): Promise<{ project: any; scriptResp: any }> {
+  // SwissCirkus fork: the host's script is in their browser + Drive, not on a server — the live connection brings it.
+  if (browserLibrary()) return { project: null, scriptResp: null };
   // Try multiple backends (local + alternatives) for cross-backend joins.
   // Derive host from the collab server URL so cross-machine access works.
   const collabHttpUrl = collabWsUrl.replace(/^ws/, 'http');
@@ -1590,7 +1592,7 @@ const ScreenplayEditor: React.FC = () => {
 
       // Try to load project metadata in the background (non-blocking).
       // This fills in the title and project name if reachable, but is not required.
-      try {
+      if (!browserLibrary()) try {
         const pRes = await platformFetch(`${getApiBase()}/projects/${session.project_id}`);
         if (pRes.ok) {
           const project = await pRes.json();
