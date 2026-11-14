@@ -349,7 +349,8 @@
       "pages": "Páginas",
       "locations": "Locações",
       "structure": "Estrutura",
-      "bookmarks": "Marcadores"
+      "bookmarks": "Marcadores",
+      "projects": "Projetos"
     },
     "close": "Fechar Navegador",
     "filterScenes": "Filtrar cenas",
@@ -393,7 +394,41 @@
     "renameLocation": "Renomear locação",
     "skippedHeadings_one": "{{count}} cabeçalho de cena com quebra de linha foi ignorado",
     "skippedHeadings_many": "{{count}} de cabeçalhos de cena com quebra de linha foram ignorados",
-    "skippedHeadings_other": "{{count}} cabeçalhos de cena com quebra de linha foram ignorados"
+    "skippedHeadings_other": "{{count}} cabeçalhos de cena com quebra de linha foram ignorados",
+    "projects": {
+      "manage": "Gerenciar projetos",
+      "manageTip": "Abrir a tela completa de Gerenciar projetos",
+      "loading": "Carregando…",
+      "empty": "Ainda não há projetos. Use Gerenciar projetos para criar um.",
+      "scripts": "Roteiros",
+      "links": "Google Docs e links",
+      "files": "Arquivos",
+      "openScript": "Abrir este roteiro",
+      "openNow": "Este roteiro está aberto",
+      "untitled": "Sem título",
+      "openLink": "Abrir em uma nova aba do navegador",
+      "linkUnreadable": "Não é possível ler este link",
+      "addLink": "Adicionar documento do Google…",
+      "linkUrl": "Cole um link de documento do Google",
+      "linkName": "Nome (opcional)",
+      "add": "Adicionar",
+      "cancel": "Cancelar",
+      "removeLink": "Remover link",
+      "removeLinkNamed": "Remover o link {{name}}",
+      "removeLinkConfirm": "Remover o link “{{name}}” deste projeto? O documento do Google em si não é alterado.",
+      "badLink": "Isso não é um link da web.",
+      "linkAdded": "Link adicionado",
+      "linkFailed": "Não foi possível alterar os links do projeto.",
+      "dropHint": "Solte aqui um link de documento do Google para adicioná-lo a este projeto",
+      "openProject": "Abrir a página do projeto",
+      "kind": {
+        "gdoc": "Documento do Google",
+        "gsheet": "Planilha do Google",
+        "gslides": "Apresentação do Google",
+        "gdrive": "Arquivo do Google Drive",
+        "web": "Link da web"
+      }
+    }
   },
   "beatBoard": {
     "title": "Quadro de beats",

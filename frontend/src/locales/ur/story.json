@@ -340,7 +340,8 @@
       "pages": "صفحات",
       "locations": "لوکیشنز",
       "structure": "ساخت",
-      "bookmarks": "بُک مارکس"
+      "bookmarks": "بُک مارکس",
+      "projects": "پروجیکٹس"
     },
     "close": "نیویگیٹر بند کریں",
     "filterScenes": "سینز فلٹر کریں",
@@ -381,7 +382,41 @@
     "noLocations": "ابھی کوئی لوکیشن نہیں۔ “INT. COFFEE SHOP - DAY” جیسی سین ہیڈنگز یہاں نظر آئیں گی۔",
     "renameLocation": "لوکیشن کا نام بدلیں",
     "skippedHeadings_one": "لائن بریک والی {{count}} سین ہیڈنگ چھوڑ دی گئی",
-    "skippedHeadings_other": "لائن بریک والی {{count}} سین ہیڈنگز چھوڑ دی گئیں"
+    "skippedHeadings_other": "لائن بریک والی {{count}} سین ہیڈنگز چھوڑ دی گئیں",
+    "projects": {
+      "manage": "پروجیکٹس کا انتظام",
+      "manageTip": "پروجیکٹس کے انتظام کی پوری اسکرین کھولیں",
+      "loading": "لوڈ ہو رہا ہے…",
+      "empty": "ابھی کوئی پروجیکٹ نہیں۔ نیا بنانے کے لیے پروجیکٹس کا انتظام استعمال کریں۔",
+      "scripts": "اسکرپٹس",
+      "links": "Google دستاویزات اور لنکس",
+      "files": "فائلیں",
+      "openScript": "یہ اسکرپٹ کھولیں",
+      "openNow": "یہ اسکرپٹ کھلا ہے",
+      "untitled": "بے عنوان",
+      "openLink": "براؤزر کے نئے ٹیب میں کھولیں",
+      "linkUnreadable": "یہ لنک پڑھا نہیں جا سکتا",
+      "addLink": "Google دستاویز شامل کریں…",
+      "linkUrl": "Google دستاویز کا لنک چسپاں کریں",
+      "linkName": "نام (اختیاری)",
+      "add": "شامل کریں",
+      "cancel": "منسوخ کریں",
+      "removeLink": "لنک ہٹائیں",
+      "removeLinkNamed": "لنک {{name}} ہٹائیں",
+      "removeLinkConfirm": "کیا لنک “{{name}}” اس پروجیکٹ سے ہٹا دیا جائے؟ خود Google دستاویز میں کوئی تبدیلی نہیں ہوگی۔",
+      "badLink": "یہ ویب لنک نہیں ہے۔",
+      "linkAdded": "لنک شامل ہو گیا",
+      "linkFailed": "پروجیکٹ کے لنکس تبدیل نہیں ہو سکے۔",
+      "dropHint": "اس پروجیکٹ میں شامل کرنے کے لیے Google دستاویز کا لنک یہاں چھوڑیں",
+      "openProject": "پروجیکٹ کا صفحہ کھولیں",
+      "kind": {
+        "gdoc": "Google دستاویز",
+        "gsheet": "Google اسپریڈشیٹ",
+        "gslides": "Google سلائیڈز",
+        "gdrive": "Google Drive فائل",
+        "web": "لنک"
+      }
+    }
   },
   "beatBoard": {
     "title": "بیٹ بورڈ",

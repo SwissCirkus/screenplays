@@ -8,6 +8,8 @@ import AssetViewer from './AssetViewer';
 import { api } from '../services/api';
 import { showToast } from './Toast';
 import Select from './Select';
+import { addProjectLink, openLinkInNewTab, readProjectLink } from '../services/projectLinks';
+import { isLinkAsset, linkFromDataTransfer, linkIcon, linkKind, normalizeLinkUrl } from '../utils/linkAssets';
 
 interface AssetManagerProps {
   projectId: string;
@@ -15,7 +17,7 @@ interface AssetManagerProps {
 }
 
 const AssetManager: React.FC<AssetManagerProps> = ({ projectId, embedded = false }) => {
-  const { t } = useTranslation(['tools', 'common']);
+  const { t } = useTranslation(['tools', 'common', 'story']);
   const { assets, setAssets, assetManagerOpen, setAssetManagerOpen } = useAssetStore();
   const [filterText, setFilterText] = useState('');
   const [filterTag, setFilterTag] = useState('');
@@ -28,11 +30,19 @@ const AssetManager: React.FC<AssetManagerProps> = ({ projectId, embedded = false
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [savingTagsId, setSavingTagsId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Google Doc links (utils/linkAssets.ts): their URLs, read once per listing
+  // so a click opens the doc straight away instead of being blocked as a pop-up.
+  const [linkUrls, setLinkUrls] = useState<Record<string, string | null>>({});
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkName, setNewLinkName] = useState('');
 
   const fetchAssets = useCallback(async () => {
     try {
       const list = await api.listAssets(projectId);
       setAssets(list);
+      const links = (list as Asset[]).filter(isLinkAsset);
+      const urls = await Promise.all(links.map(async (a) => [a.id, await readProjectLink(projectId, a)] as const));
+      setLinkUrls(Object.fromEntries(urls));
     } catch {
       // silently fail
     }
@@ -149,9 +159,28 @@ const AssetManager: React.FC<AssetManagerProps> = ({ projectId, embedded = false
     }
   };
 
+  const addLink = async (rawUrl: string, name: string): Promise<boolean> => {
+    const url = normalizeLinkUrl(rawUrl);
+    if (!url) { showToast(t('story:navigator.projects.badLink'), 'error'); return false; }
+    try {
+      await addProjectLink(projectId, url, name, t(`story:navigator.projects.kind.${linkKind(url)}`));
+      await fetchAssets();
+      showToast(t('story:navigator.projects.linkAdded'), 'success');
+      return true;
+    } catch {
+      showToast(t('story:navigator.projects.linkFailed'), 'error');
+      return false;
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
+    // A link dragged from a browser (a Google Doc tab, say) carries no file.
+    if (e.dataTransfer.files.length === 0) {
+      const link = linkFromDataTransfer(e.dataTransfer);
+      if (link) { void addLink(link.url, link.name); return; }
+    }
     handleUpload(e.dataTransfer.files);
   };
 
@@ -164,6 +193,11 @@ const AssetManager: React.FC<AssetManagerProps> = ({ projectId, embedded = false
     const tagMatch = !filterTag || a.tags.includes(filterTag);
     return nameMatch && tagMatch;
   });
+
+  const assetIcon = (asset: Asset): string => {
+    if (isLinkAsset(asset)) { const url = linkUrls[asset.id]; return linkIcon(url ? linkKind(url) : 'web'); }
+    return getMimeIcon(asset.mime_type);
+  };
 
   const getMimeIcon = (mime: string): string => {
     if (mime.startsWith('image/')) return '\ud83d\uddbc';
@@ -203,6 +237,35 @@ const AssetManager: React.FC<AssetManagerProps> = ({ projectId, embedded = false
           {uploading ? t('assets.uploading') : t('assets.dropHere')}
         </div>
       </div>
+
+      <form
+        className="asset-tag-input-row asset-link-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void addLink(newLinkUrl, newLinkName).then((ok) => { if (ok) { setNewLinkUrl(''); setNewLinkName(''); } });
+        }}
+      >
+        <label>{t('story:navigator.projects.addLink')}</label>
+        <input
+          type="url"
+          placeholder={t('story:navigator.projects.linkUrl')}
+          aria-label={t('story:navigator.projects.linkUrl')}
+          value={newLinkUrl}
+          onChange={(e) => setNewLinkUrl(e.target.value)}
+          className="asset-tag-input"
+        />
+        <input
+          type="text"
+          placeholder={t('story:navigator.projects.linkName')}
+          aria-label={t('story:navigator.projects.linkName')}
+          value={newLinkName}
+          onChange={(e) => setNewLinkName(e.target.value)}
+          className="asset-tag-input asset-link-name"
+        />
+        <button type="submit" className="asset-link-add" disabled={!newLinkUrl.trim()}>
+          {t('story:navigator.projects.add')}
+        </button>
+      </form>
 
       <div className="asset-tag-input-row">
         <label>{t('assets.tagsForUpload')}</label>
@@ -257,12 +320,18 @@ const AssetManager: React.FC<AssetManagerProps> = ({ projectId, embedded = false
               {filtered.map((asset) => (
                 <tr key={asset.id} className="asset-row">
                   <td className="asset-cell-icon">
-                    <span title={asset.mime_type}>{getMimeIcon(asset.mime_type)}</span>
+                    <span title={asset.mime_type}>{assetIcon(asset)}</span>
                   </td>
                   <td
                     className="asset-cell-name"
-                    onClick={() => setPreviewAsset(asset)}
-                    title={t('assets.clickToPreview')}
+                    onClick={() => {
+                      if (!isLinkAsset(asset)) { setPreviewAsset(asset); return; }
+                      const url = linkUrls[asset.id];
+                      if (url) openLinkInNewTab(url);
+                    }}
+                    title={isLinkAsset(asset)
+                      ? (linkUrls[asset.id] ? `${t('story:navigator.projects.openLink')}\n${linkUrls[asset.id]}` : t('story:navigator.projects.linkUnreadable'))
+                      : t('assets.clickToPreview')}
                   >
                     {asset.original_name}
                   </td>

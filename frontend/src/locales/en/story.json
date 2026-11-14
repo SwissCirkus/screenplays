@@ -340,7 +340,8 @@
       "pages": "Pages",
       "locations": "Locations",
       "structure": "Structure",
-      "bookmarks": "Bookmarks"
+      "bookmarks": "Bookmarks",
+      "projects": "Projects"
     },
     "close": "Close Navigator",
     "filterScenes": "Filter scenes",
@@ -381,7 +382,41 @@
     "noLocations": "No locations yet. Scene headings like “INT. COFFEE SHOP - DAY” will appear here.",
     "renameLocation": "Rename Location",
     "skippedHeadings_one": "Skipped {{count}} scene heading containing a line break",
-    "skippedHeadings_other": "Skipped {{count}} scene headings containing a line break"
+    "skippedHeadings_other": "Skipped {{count}} scene headings containing a line break",
+    "projects": {
+      "manage": "Manage Projects",
+      "manageTip": "Open the full Manage Projects screen",
+      "loading": "Loading…",
+      "empty": "No projects yet. Use Manage Projects to make one.",
+      "scripts": "Scripts",
+      "links": "Google Docs & links",
+      "files": "Files",
+      "openScript": "Open this script",
+      "openNow": "This script is open",
+      "untitled": "Untitled",
+      "openLink": "Open in a new browser tab",
+      "linkUnreadable": "This link can't be read",
+      "addLink": "Add Google Doc…",
+      "linkUrl": "Paste a Google Doc link",
+      "linkName": "Name (optional)",
+      "add": "Add",
+      "cancel": "Cancel",
+      "removeLink": "Remove link",
+      "removeLinkNamed": "Remove link {{name}}",
+      "removeLinkConfirm": "Remove the link \"{{name}}\" from this project? The Google Doc itself is not touched.",
+      "badLink": "That isn't a web link.",
+      "linkAdded": "Link added",
+      "linkFailed": "Couldn't change the project's links.",
+      "dropHint": "Drop a Google Doc link here to add it to this project",
+      "openProject": "Open project page",
+      "kind": {
+        "gdoc": "Google Doc",
+        "gsheet": "Google Sheet",
+        "gslides": "Google Slides",
+        "gdrive": "Google Drive file",
+        "web": "Link"
+      }
+    }
   },
   "beatBoard": {
     "title": "Beat Board",

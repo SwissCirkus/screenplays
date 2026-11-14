@@ -340,7 +340,8 @@
       "pages": "ਪੰਨੇ",
       "locations": "ਲੋਕੇਸ਼ਨ",
       "structure": "ਢਾਂਚਾ",
-      "bookmarks": "ਬੁੱਕਮਾਰਕ"
+      "bookmarks": "ਬੁੱਕਮਾਰਕ",
+      "projects": "ਪ੍ਰੋਜੈਕਟ"
     },
     "close": "ਨੈਵੀਗੇਟਰ ਬੰਦ ਕਰੋ",
     "filterScenes": "ਸੀਨ ਫਿਲਟਰ ਕਰੋ",
@@ -381,7 +382,41 @@
     "noLocations": "ਅਜੇ ਕੋਈ ਲੋਕੇਸ਼ਨ ਨਹੀਂ। “INT. COFFEE SHOP - DAY” ਵਰਗੀਆਂ ਸੀਨ ਹੈਡਿੰਗਾਂ ਇੱਥੇ ਦਿਖਾਈ ਦੇਣਗੀਆਂ।",
     "renameLocation": "ਲੋਕੇਸ਼ਨ ਦਾ ਨਾਮ ਬਦਲੋ",
     "skippedHeadings_one": "ਲਾਈਨ ਬ੍ਰੇਕ ਵਾਲੀ {{count}} ਸੀਨ ਹੈਡਿੰਗ ਛੱਡ ਦਿੱਤੀ ਗਈ",
-    "skippedHeadings_other": "ਲਾਈਨ ਬ੍ਰੇਕ ਵਾਲੀਆਂ {{count}} ਸੀਨ ਹੈਡਿੰਗਾਂ ਛੱਡ ਦਿੱਤੀਆਂ ਗਈਆਂ"
+    "skippedHeadings_other": "ਲਾਈਨ ਬ੍ਰੇਕ ਵਾਲੀਆਂ {{count}} ਸੀਨ ਹੈਡਿੰਗਾਂ ਛੱਡ ਦਿੱਤੀਆਂ ਗਈਆਂ",
+    "projects": {
+      "manage": "ਪ੍ਰੋਜੈਕਟ ਪ੍ਰਬੰਧਿਤ ਕਰੋ",
+      "manageTip": "ਪ੍ਰੋਜੈਕਟ ਪ੍ਰਬੰਧਿਤ ਕਰੋ ਦੀ ਪੂਰੀ ਸਕ੍ਰੀਨ ਖੋਲ੍ਹੋ",
+      "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…",
+      "empty": "ਹਾਲੇ ਕੋਈ ਪ੍ਰੋਜੈਕਟ ਨਹੀਂ। ਨਵਾਂ ਬਣਾਉਣ ਲਈ ਪ੍ਰੋਜੈਕਟ ਪ੍ਰਬੰਧਿਤ ਕਰੋ ਵਰਤੋ।",
+      "scripts": "ਸਕ੍ਰਿਪਟਾਂ",
+      "links": "Google ਦਸਤਾਵੇਜ਼ ਅਤੇ ਲਿੰਕ",
+      "files": "ਫ਼ਾਈਲਾਂ",
+      "openScript": "ਇਹ ਸਕ੍ਰਿਪਟ ਖੋਲ੍ਹੋ",
+      "openNow": "ਇਹ ਸਕ੍ਰਿਪਟ ਖੁੱਲ੍ਹੀ ਹੈ",
+      "untitled": "ਬਿਨਾਂ ਸਿਰਲੇਖ",
+      "openLink": "ਬ੍ਰਾਊਜ਼ਰ ਦੀ ਨਵੀਂ ਟੈਬ ਵਿੱਚ ਖੋਲ੍ਹੋ",
+      "linkUnreadable": "ਇਹ ਲਿੰਕ ਪੜ੍ਹਿਆ ਨਹੀਂ ਜਾ ਸਕਦਾ",
+      "addLink": "Google ਦਸਤਾਵੇਜ਼ ਜੋੜੋ…",
+      "linkUrl": "Google ਦਸਤਾਵੇਜ਼ ਦਾ ਲਿੰਕ ਚਿਪਕਾਓ",
+      "linkName": "ਨਾਮ (ਵਿਕਲਪਿਕ)",
+      "add": "ਜੋੜੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "removeLink": "ਲਿੰਕ ਹਟਾਓ",
+      "removeLinkNamed": "ਲਿੰਕ {{name}} ਹਟਾਓ",
+      "removeLinkConfirm": "ਕੀ ਇਸ ਪ੍ਰੋਜੈਕਟ ਵਿੱਚੋਂ “{{name}}” ਲਿੰਕ ਹਟਾਉਣਾ ਹੈ? Google ਦਸਤਾਵੇਜ਼ ਵਿੱਚ ਕੋਈ ਬਦਲਾਅ ਨਹੀਂ ਹੋਵੇਗਾ।",
+      "badLink": "ਇਹ ਵੈੱਬ ਲਿੰਕ ਨਹੀਂ ਹੈ।",
+      "linkAdded": "ਲਿੰਕ ਜੋੜਿਆ ਗਿਆ",
+      "linkFailed": "ਪ੍ਰੋਜੈਕਟ ਦੇ ਲਿੰਕ ਬਦਲੇ ਨਹੀਂ ਜਾ ਸਕੇ।",
+      "dropHint": "ਇਸ ਪ੍ਰੋਜੈਕਟ ਵਿੱਚ ਜੋੜਨ ਲਈ Google ਦਸਤਾਵੇਜ਼ ਦਾ ਲਿੰਕ ਇੱਥੇ ਛੱਡੋ",
+      "openProject": "ਪ੍ਰੋਜੈਕਟ ਪੰਨਾ ਖੋਲ੍ਹੋ",
+      "kind": {
+        "gdoc": "Google ਦਸਤਾਵੇਜ਼",
+        "gsheet": "Google ਸਪ੍ਰੈਡਸ਼ੀਟ",
+        "gslides": "Google ਸਲਾਈਡਾਂ",
+        "gdrive": "Google ਡਰਾਈਵ ਫ਼ਾਈਲ",
+        "web": "ਲਿੰਕ"
+      }
+    }
   },
   "beatBoard": {
     "title": "ਬੀਟ ਬੋਰਡ",

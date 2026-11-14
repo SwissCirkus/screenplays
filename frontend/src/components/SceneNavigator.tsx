@@ -18,6 +18,7 @@ import { listBookmarks } from '../utils/bookmarks';
 import { goToBookmark, removeBookmark } from './bookmarkActions';
 import { elementLabel } from '../editor/elementLabels';
 import { docJSON, useSettledEditorDoc } from '../hooks/useEditorTransactions';
+import NavigatorProjects from './NavigatorProjects';
 
 interface SceneNavigatorProps {
   editor: Editor | null;
@@ -25,7 +26,7 @@ interface SceneNavigatorProps {
   style?: React.CSSProperties;
 }
 
-type NavTab = 'scenes' | 'pages' | 'locations' | 'structure' | 'bookmarks';
+type NavTab = 'scenes' | 'pages' | 'locations' | 'structure' | 'bookmarks' | 'projects';
 
 // ── Scene heading parser ────────────────────────────────────────────────
 
@@ -814,6 +815,7 @@ const SceneNavigator: React.FC<SceneNavigatorProps> = ({ editor, scrollContainer
           <button className={`navigator-tab${activeTab === 'locations' ? ' active' : ''}`} onClick={() => setActiveTab('locations')}>{t('navigator.tabs.locations')}</button>
           <button className={`navigator-tab${activeTab === 'structure' ? ' active' : ''}`} onClick={() => setActiveTab('structure')}>{t('navigator.tabs.structure')}</button>
           <button className={`navigator-tab${activeTab === 'bookmarks' ? ' active' : ''}`} onClick={() => setActiveTab('bookmarks')}>{t('navigator.tabs.bookmarks')}</button>
+          <button className={`navigator-tab${activeTab === 'projects' ? ' active' : ''}`} onClick={() => setActiveTab('projects')}>{t('navigator.tabs.projects')}</button>
         </div>
         <button className="navigator-close" onClick={toggleNavigator} title={t('navigator.close')}>×</button>
       </div>
@@ -1212,6 +1214,9 @@ const SceneNavigator: React.FC<SceneNavigatorProps> = ({ editor, scrollContainer
           </div>
         </>
       )}
+
+      {/* ── Projects tab ─────────────────────────────────────────────── */}
+      {activeTab === 'projects' && <NavigatorProjects />}
 
       {/* ── Locations tab ────────────────────────────────────────────── */}
       {activeTab === 'locations' && (

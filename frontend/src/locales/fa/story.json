@@ -340,7 +340,8 @@
       "pages": "صفحه‌ها",
       "locations": "لوکیشن‌ها",
       "structure": "ساختار",
-      "bookmarks": "نشانک‌ها"
+      "bookmarks": "نشانک‌ها",
+      "projects": "پروژه‌ها"
     },
     "close": "بستن ناوبر",
     "filterScenes": "پالایش سکانس‌ها",
@@ -381,7 +382,41 @@
     "noLocations": "هنوز لوکیشنی نیست. عنوان‌هایی مثل «INT. COFFEE SHOP - DAY» اینجا نمایش داده می‌شوند.",
     "renameLocation": "تغییر نام لوکیشن",
     "skippedHeadings_one": "{{count}} عنوان سکانس که شکست خط داشت نادیده گرفته شد",
-    "skippedHeadings_other": "{{count}} عنوان سکانس که شکست خط داشتند نادیده گرفته شدند"
+    "skippedHeadings_other": "{{count}} عنوان سکانس که شکست خط داشتند نادیده گرفته شدند",
+    "projects": {
+      "manage": "مدیریت پروژه‌ها",
+      "manageTip": "باز کردن صفحهٔ کامل مدیریت پروژه‌ها",
+      "loading": "در حال بارگذاری…",
+      "empty": "هنوز پروژه‌ای نیست. برای ساختن یکی از مدیریت پروژه‌ها استفاده کنید.",
+      "scripts": "فیلم‌نامه‌ها",
+      "links": "سندهای Google و پیوندها",
+      "files": "پرونده‌ها",
+      "openScript": "باز کردن این فیلم‌نامه",
+      "openNow": "این فیلم‌نامه باز است",
+      "untitled": "بی‌عنوان",
+      "openLink": "باز کردن در زبانهٔ تازهٔ مرورگر",
+      "linkUnreadable": "این پیوند خوانده نمی‌شود",
+      "addLink": "افزودن سند Google…",
+      "linkUrl": "پیوند یک سند Google را بچسبانید",
+      "linkName": "نام (اختیاری)",
+      "add": "افزودن",
+      "cancel": "لغو",
+      "removeLink": "برداشتن پیوند",
+      "removeLinkNamed": "برداشتن پیوند {{name}}",
+      "removeLinkConfirm": "پیوند «{{name}}» از این پروژه برداشته شود؟ خود سند Google دست نمی‌خورد.",
+      "badLink": "این پیوند وب نیست.",
+      "linkAdded": "پیوند افزوده شد",
+      "linkFailed": "تغییر پیوندهای پروژه ممکن نشد.",
+      "dropHint": "پیوند یک سند Google را اینجا رها کنید تا به این پروژه افزوده شود",
+      "openProject": "باز کردن صفحهٔ پروژه",
+      "kind": {
+        "gdoc": "سند Google",
+        "gsheet": "صفحه‌گسترده Google",
+        "gslides": "ارائهٔ Google",
+        "gdrive": "پرونده در Google Drive",
+        "web": "پیوند"
+      }
+    }
   },
   "beatBoard": {
     "title": "تخته بیت‌ها",

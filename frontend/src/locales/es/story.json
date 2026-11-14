@@ -349,7 +349,8 @@
       "pages": "Páginas",
       "locations": "Localizaciones",
       "structure": "Estructura",
-      "bookmarks": "Marcadores"
+      "bookmarks": "Marcadores",
+      "projects": "Proyectos"
     },
     "close": "Cerrar Navegador",
     "filterScenes": "Filtrar escenas",
@@ -393,7 +394,41 @@
     "renameLocation": "Renombrar localización",
     "skippedHeadings_one": "Se omitió {{count}} encabezado de escena que contiene un salto de línea",
     "skippedHeadings_many": "Se omitieron {{count}} de encabezados de escena que contienen un salto de línea",
-    "skippedHeadings_other": "Se omitieron {{count}} encabezados de escena que contienen un salto de línea"
+    "skippedHeadings_other": "Se omitieron {{count}} encabezados de escena que contienen un salto de línea",
+    "projects": {
+      "manage": "Gestionar proyectos",
+      "manageTip": "Abrir la pantalla completa de Gestionar proyectos",
+      "loading": "Cargando…",
+      "empty": "Aún no hay proyectos. Usa Gestionar proyectos para crear uno.",
+      "scripts": "Guiones",
+      "links": "Google Docs y enlaces",
+      "files": "Archivos",
+      "openScript": "Abrir este guion",
+      "openNow": "Este guion está abierto",
+      "untitled": "Sin título",
+      "openLink": "Abrir en una pestaña nueva del navegador",
+      "linkUnreadable": "No se puede leer este enlace",
+      "addLink": "Añadir documento de Google…",
+      "linkUrl": "Pega un enlace de documento de Google",
+      "linkName": "Nombre (opcional)",
+      "add": "Añadir",
+      "cancel": "Cancelar",
+      "removeLink": "Quitar enlace",
+      "removeLinkNamed": "Quitar el enlace {{name}}",
+      "removeLinkConfirm": "¿Quitar el enlace «{{name}}» de este proyecto? El documento de Google no se modifica.",
+      "badLink": "Eso no es un enlace web.",
+      "linkAdded": "Enlace añadido",
+      "linkFailed": "No se pudieron cambiar los enlaces del proyecto.",
+      "dropHint": "Suelta aquí un enlace de documento de Google para añadirlo a este proyecto",
+      "openProject": "Abrir la página del proyecto",
+      "kind": {
+        "gdoc": "Documento de Google",
+        "gsheet": "Hoja de cálculo de Google",
+        "gslides": "Presentación de Google",
+        "gdrive": "Archivo de Google Drive",
+        "web": "Enlace"
+      }
+    }
   },
   "beatBoard": {
     "title": "Tablero de beats",

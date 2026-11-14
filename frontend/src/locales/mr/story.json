@@ -340,7 +340,8 @@
       "pages": "पृष्ठे",
       "locations": "लोकेशन",
       "structure": "रचना",
-      "bookmarks": "बुकमार्क"
+      "bookmarks": "बुकमार्क",
+      "projects": "प्रकल्प"
     },
     "close": "नेव्हिगेटर बंद करा",
     "filterScenes": "सीन फिल्टर करा",
@@ -381,7 +382,41 @@
     "noLocations": "अद्याप लोकेशन नाहीत. “INT. COFFEE SHOP - DAY” सारखे सीन हेडिंग येथे दिसतील.",
     "renameLocation": "लोकेशनचे नाव बदला",
     "skippedHeadings_one": "ओळ खंड असलेले {{count}} सीन हेडिंग वगळले",
-    "skippedHeadings_other": "ओळ खंड असलेले {{count}} सीन हेडिंग वगळले"
+    "skippedHeadings_other": "ओळ खंड असलेले {{count}} सीन हेडिंग वगळले",
+    "projects": {
+      "manage": "प्रकल्प व्यवस्थापित करा",
+      "manageTip": "प्रकल्प व्यवस्थापित करा ही पूर्ण स्क्रीन उघडा",
+      "loading": "लोड होत आहे…",
+      "empty": "अजून एकही प्रकल्प नाही. नवा बनवण्यासाठी प्रकल्प व्यवस्थापित करा वापरा.",
+      "scripts": "स्क्रिप्ट",
+      "links": "Google दस्तऐवज आणि दुवे",
+      "files": "फायली",
+      "openScript": "ही स्क्रिप्ट उघडा",
+      "openNow": "ही स्क्रिप्ट उघडी आहे",
+      "untitled": "शीर्षकहीन",
+      "openLink": "ब्राउझरच्या नव्या टॅबमध्ये उघडा",
+      "linkUnreadable": "हा दुवा वाचता येत नाही",
+      "addLink": "Google दस्तऐवज जोडा…",
+      "linkUrl": "Google दस्तऐवजाचा दुवा चिकटवा",
+      "linkName": "नाव (ऐच्छिक)",
+      "add": "जोडा",
+      "cancel": "रद्द करा",
+      "removeLink": "दुवा काढा",
+      "removeLinkNamed": "दुवा {{name}} काढा",
+      "removeLinkConfirm": "या प्रकल्पातून “{{name}}” हा दुवा काढायचा? Google दस्तऐवजात काहीही बदल होणार नाही.",
+      "badLink": "हा वेब दुवा नाही.",
+      "linkAdded": "दुवा जोडला",
+      "linkFailed": "प्रकल्पाचे दुवे बदलता आले नाहीत.",
+      "dropHint": "या प्रकल्पात जोडण्यासाठी Google दस्तऐवजाचा दुवा इथे सोडा",
+      "openProject": "प्रकल्पाचे पान उघडा",
+      "kind": {
+        "gdoc": "Google दस्तऐवज",
+        "gsheet": "Google स्प्रेडशीट",
+        "gslides": "Google स्लाइड्स",
+        "gdrive": "Google Drive फाइल",
+        "web": "दुवा"
+      }
+    }
   },
   "beatBoard": {
     "title": "बीट बोर्ड",

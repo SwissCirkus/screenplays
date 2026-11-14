@@ -340,7 +340,8 @@
       "pages": "পৃষ্ঠা",
       "locations": "লোকেশন",
       "structure": "কাঠামো",
-      "bookmarks": "বুকমার্ক"
+      "bookmarks": "বুকমার্ক",
+      "projects": "প্রজেক্ট"
     },
     "close": "নেভিগেটর বন্ধ করুন",
     "filterScenes": "সিন ফিল্টার",
@@ -381,7 +382,41 @@
     "noLocations": "এখনও কোনো লোকেশন নেই। “INT. COFFEE SHOP - DAY”-এর মতো সিন হেডিং এখানে দেখা যাবে।",
     "renameLocation": "লোকেশনের নাম বদলান",
     "skippedHeadings_one": "লাইন ব্রেকযুক্ত {{count}}টি সিন হেডিং বাদ দেওয়া হয়েছে",
-    "skippedHeadings_other": "লাইন ব্রেকযুক্ত {{count}}টি সিন হেডিং বাদ দেওয়া হয়েছে"
+    "skippedHeadings_other": "লাইন ব্রেকযুক্ত {{count}}টি সিন হেডিং বাদ দেওয়া হয়েছে",
+    "projects": {
+      "manage": "প্রজেক্ট পরিচালনা",
+      "manageTip": "প্রজেক্ট পরিচালনার পুরো স্ক্রিন খুলুন",
+      "loading": "লোড হচ্ছে…",
+      "empty": "এখনও কোনো প্রজেক্ট নেই। নতুন তৈরি করতে প্রজেক্ট পরিচালনা ব্যবহার করুন।",
+      "scripts": "স্ক্রিপ্ট",
+      "links": "Google ডকস ও লিংক",
+      "files": "ফাইল",
+      "openScript": "এই স্ক্রিপ্টটি খুলুন",
+      "openNow": "এই স্ক্রিপ্টটি খোলা আছে",
+      "untitled": "শিরোনামহীন",
+      "openLink": "ব্রাউজারের নতুন ট্যাবে খুলুন",
+      "linkUnreadable": "এই লিংকটি পড়া যাচ্ছে না",
+      "addLink": "Google ডক যোগ করুন…",
+      "linkUrl": "একটি Google ডকের লিংক পেস্ট করুন",
+      "linkName": "নাম (ঐচ্ছিক)",
+      "add": "যোগ করুন",
+      "cancel": "বাতিল",
+      "removeLink": "লিংক সরান",
+      "removeLinkNamed": "লিংক {{name}} সরান",
+      "removeLinkConfirm": "এই প্রজেক্ট থেকে “{{name}}” লিংকটি সরাবেন? Google ডকটি নিজে অপরিবর্তিত থাকবে।",
+      "badLink": "এটি কোনো ওয়েব লিংক নয়।",
+      "linkAdded": "লিংক যোগ হয়েছে",
+      "linkFailed": "প্রজেক্টের লিংক বদলানো গেল না।",
+      "dropHint": "এই প্রজেক্টে যোগ করতে একটি Google ডকের লিংক এখানে ছাড়ুন",
+      "openProject": "প্রজেক্টের পাতা খুলুন",
+      "kind": {
+        "gdoc": "Google ডক",
+        "gsheet": "Google স্প্রেডশিট",
+        "gslides": "Google স্লাইড",
+        "gdrive": "Google ড্রাইভ ফাইল",
+        "web": "লিংক"
+      }
+    }
   },
   "beatBoard": {
     "title": "বিট বোর্ড",

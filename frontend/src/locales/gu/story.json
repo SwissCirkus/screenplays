@@ -340,7 +340,8 @@
       "pages": "પેજ",
       "locations": "લોકેશન",
       "structure": "માળખું",
-      "bookmarks": "બુકમાર્ક"
+      "bookmarks": "બુકમાર્ક",
+      "projects": "પ્રોજેક્ટ"
     },
     "close": "નેવિગેટર બંધ કરો",
     "filterScenes": "સીન ફિલ્ટર કરો",
@@ -381,7 +382,41 @@
     "noLocations": "હજી કોઈ લોકેશન નથી. “INT. COFFEE SHOP - DAY” જેવા સીન હેડિંગ અહીં દેખાશે.",
     "renameLocation": "લોકેશનનું નામ બદલો",
     "skippedHeadings_one": "લાઇન બ્રેક ધરાવતું {{count}} સીન હેડિંગ છોડી દીધું",
-    "skippedHeadings_other": "લાઇન બ્રેક ધરાવતાં {{count}} સીન હેડિંગ છોડી દીધાં"
+    "skippedHeadings_other": "લાઇન બ્રેક ધરાવતાં {{count}} સીન હેડિંગ છોડી દીધાં",
+    "projects": {
+      "manage": "પ્રોજેક્ટ મેનેજ કરો",
+      "manageTip": "પ્રોજેક્ટ મેનેજ કરોની આખી સ્ક્રીન ખોલો",
+      "loading": "લોડ થઈ રહ્યું છે…",
+      "empty": "હજી કોઈ પ્રોજેક્ટ નથી. નવો બનાવવા પ્રોજેક્ટ મેનેજ કરો વાપરો.",
+      "scripts": "સ્ક્રિપ્ટ",
+      "links": "Google દસ્તાવેજો અને લિંક",
+      "files": "ફાઇલો",
+      "openScript": "આ સ્ક્રિપ્ટ ખોલો",
+      "openNow": "આ સ્ક્રિપ્ટ ખુલ્લી છે",
+      "untitled": "શીર્ષક વિનાનું",
+      "openLink": "બ્રાઉઝરના નવા ટૅબમાં ખોલો",
+      "linkUnreadable": "આ લિંક વાંચી શકાતી નથી",
+      "addLink": "Google દસ્તાવેજ ઉમેરો…",
+      "linkUrl": "Google દસ્તાવેજની લિંક પેસ્ટ કરો",
+      "linkName": "નામ (વૈકલ્પિક)",
+      "add": "ઉમેરો",
+      "cancel": "રદ કરો",
+      "removeLink": "લિંક દૂર કરો",
+      "removeLinkNamed": "લિંક {{name}} દૂર કરો",
+      "removeLinkConfirm": "આ પ્રોજેક્ટમાંથી “{{name}}” લિંક દૂર કરવી છે? Google દસ્તાવેજમાં કોઈ ફેરફાર નહીં થાય.",
+      "badLink": "આ વેબ લિંક નથી.",
+      "linkAdded": "લિંક ઉમેરાઈ",
+      "linkFailed": "પ્રોજેક્ટની લિંક બદલી શકાઈ નહીં.",
+      "dropHint": "આ પ્રોજેક્ટમાં ઉમેરવા Google દસ્તાવેજની લિંક અહીં મૂકો",
+      "openProject": "પ્રોજેક્ટનું પાનું ખોલો",
+      "kind": {
+        "gdoc": "Google દસ્તાવેજ",
+        "gsheet": "Google સ્પ્રેડશીટ",
+        "gslides": "Google સ્લાઇડ્સ",
+        "gdrive": "Google ડ્રાઇવ ફાઇલ",
+        "web": "લિંક"
+      }
+    }
   },
   "beatBoard": {
     "title": "બીટ બોર્ડ",

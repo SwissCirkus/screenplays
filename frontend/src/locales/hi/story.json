@@ -340,7 +340,8 @@
       "pages": "पेज",
       "locations": "लोकेशन",
       "structure": "ढाँचा",
-      "bookmarks": "बुकमार्क"
+      "bookmarks": "बुकमार्क",
+      "projects": "प्रोजेक्ट"
     },
     "close": "नेविगेटर बंद करें",
     "filterScenes": "सीन फ़िल्टर करें",
@@ -381,7 +382,41 @@
     "noLocations": "अभी कोई लोकेशन नहीं है। “INT. COFFEE SHOP - DAY” जैसी सीन हेडिंग यहाँ दिखेंगी।",
     "renameLocation": "लोकेशन का नाम बदलें",
     "skippedHeadings_one": "लाइन ब्रेक वाली {{count}} सीन हेडिंग छोड़ दी गई",
-    "skippedHeadings_other": "लाइन ब्रेक वाली {{count}} सीन हेडिंग छोड़ दी गईं"
+    "skippedHeadings_other": "लाइन ब्रेक वाली {{count}} सीन हेडिंग छोड़ दी गईं",
+    "projects": {
+      "manage": "प्रोजेक्ट प्रबंधित करें",
+      "manageTip": "प्रोजेक्ट प्रबंधित करें की पूरी स्क्रीन खोलें",
+      "loading": "लोड हो रहा है…",
+      "empty": "अभी कोई प्रोजेक्ट नहीं है। नया बनाने के लिए प्रोजेक्ट प्रबंधित करें का उपयोग करें।",
+      "scripts": "स्क्रिप्ट",
+      "links": "Google दस्तावेज़ और लिंक",
+      "files": "फ़ाइलें",
+      "openScript": "यह स्क्रिप्ट खोलें",
+      "openNow": "यह स्क्रिप्ट खुली है",
+      "untitled": "बिना शीर्षक",
+      "openLink": "ब्राउज़र के नए टैब में खोलें",
+      "linkUnreadable": "यह लिंक पढ़ा नहीं जा सकता",
+      "addLink": "Google दस्तावेज़ जोड़ें…",
+      "linkUrl": "Google दस्तावेज़ का लिंक चिपकाएँ",
+      "linkName": "नाम (वैकल्पिक)",
+      "add": "जोड़ें",
+      "cancel": "रद्द करें",
+      "removeLink": "लिंक हटाएँ",
+      "removeLinkNamed": "लिंक {{name}} हटाएँ",
+      "removeLinkConfirm": "इस प्रोजेक्ट से लिंक “{{name}}” हटाएँ? Google दस्तावेज़ में कोई बदलाव नहीं होगा।",
+      "badLink": "यह वेब लिंक नहीं है।",
+      "linkAdded": "लिंक जोड़ा गया",
+      "linkFailed": "प्रोजेक्ट के लिंक बदले नहीं जा सके।",
+      "dropHint": "इस प्रोजेक्ट में जोड़ने के लिए Google दस्तावेज़ का लिंक यहाँ छोड़ें",
+      "openProject": "प्रोजेक्ट पेज खोलें",
+      "kind": {
+        "gdoc": "Google दस्तावेज़",
+        "gsheet": "Google स्प्रेडशीट",
+        "gslides": "Google स्लाइड",
+        "gdrive": "Google Drive फ़ाइल",
+        "web": "लिंक"
+      }
+    }
   },
   "beatBoard": {
     "title": "बीट बोर्ड",

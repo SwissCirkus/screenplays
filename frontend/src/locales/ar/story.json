@@ -376,7 +376,8 @@
       "pages": "الصفحات",
       "locations": "المواقع",
       "structure": "البنية",
-      "bookmarks": "الإشارات المرجعية"
+      "bookmarks": "الإشارات المرجعية",
+      "projects": "المشاريع"
     },
     "close": "إغلاق المستكشف",
     "filterScenes": "تصفية المشاهد",
@@ -429,7 +430,41 @@
     "skippedHeadings_two": "تُخطّي عنوانا مشهد يحتويان على فاصل سطر",
     "skippedHeadings_few": "تُخطّيت {{count}} عناوين مشاهد تحتوي على فاصل سطر",
     "skippedHeadings_many": "تُخطّي {{count}} عنوان مشهد يحتوي على فاصل سطر",
-    "skippedHeadings_other": "تُخطّي {{count}} عنوان مشهد يحتوي على فاصل سطر"
+    "skippedHeadings_other": "تُخطّي {{count}} عنوان مشهد يحتوي على فاصل سطر",
+    "projects": {
+      "manage": "إدارة المشاريع",
+      "manageTip": "فتح شاشة إدارة المشاريع كاملة",
+      "loading": "جارٍ التحميل…",
+      "empty": "لا توجد مشاريع بعد. استخدم إدارة المشاريع لإنشاء مشروع.",
+      "scripts": "السيناريوهات",
+      "links": "مستندات Google والروابط",
+      "files": "الملفات",
+      "openScript": "فتح هذا السيناريو",
+      "openNow": "هذا السيناريو مفتوح",
+      "untitled": "بلا عنوان",
+      "openLink": "فتح في علامة تبويب جديدة في المتصفح",
+      "linkUnreadable": "تعذّرت قراءة هذا الرابط",
+      "addLink": "إضافة مستند Google…",
+      "linkUrl": "الصق رابط مستند Google",
+      "linkName": "الاسم (اختياري)",
+      "add": "إضافة",
+      "cancel": "إلغاء",
+      "removeLink": "إزالة الرابط",
+      "removeLinkNamed": "إزالة الرابط {{name}}",
+      "removeLinkConfirm": "هل تريد إزالة الرابط «{{name}}» من هذا المشروع؟ لن يتغيّر مستند Google نفسه.",
+      "badLink": "هذا ليس رابط ويب.",
+      "linkAdded": "تمت إضافة الرابط",
+      "linkFailed": "تعذّر تغيير روابط المشروع.",
+      "dropHint": "أفلت رابط مستند Google هنا لإضافته إلى هذا المشروع",
+      "openProject": "فتح صفحة المشروع",
+      "kind": {
+        "gdoc": "مستند Google",
+        "gsheet": "جدول بيانات Google",
+        "gslides": "عرض تقديمي من Google",
+        "gdrive": "ملف في Google Drive",
+        "web": "رابط"
+      }
+    }
   },
   "beatBoard": {
     "title": "لوحة النقاط الدرامية",
