@@ -11,11 +11,20 @@
 #   postgresql://USER:PASSWORD@ep-xxx.region.aws.neon.tech/neondb?sslmode=require
 # Running it again redeploys and keeps the existing secrets (the database password is updated if it changed).
 set -euo pipefail
-export MSYS_NO_PATHCONV=1 # Git Bash: don't rewrite "/…" arguments into Windows paths
+# (No MSYS_NO_PATHCONV here: it stops the gcloud wrapper finding itself under Git Bash. No argument below starts with "/".)
 
-PROJECT_ID="${1:?usage: ./deploy-screenplays.sh <gcp-project-id> <neon-connection-string> [admin-email]}"
-DB_URL="${2:?the Neon connection string is required}"
+PROJECT_ID="${1:?usage: ./deploy-screenplays.sh <gcp-project-id> [<neon-connection-string>|-] [admin-email]}"
+DB_URL="${2:--}"
 ADMIN_EMAIL="${3:-}"
+# "-" (or nothing): read the connection string from the repo's git-ignored .env, written by `neon init`,
+# so it is never typed, pasted or shown.
+if [ "$DB_URL" = "-" ]; then
+  ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+  ENV_FILE="$ROOT/.env.local"; [ -f "$ENV_FILE" ] || ENV_FILE="$ROOT/.env"   # neon init writes .env.local
+  [ -f "$ENV_FILE" ] || { echo "ERROR: no connection string given and no .env.local / .env (run neon init first)"; exit 1; }
+  DB_URL="$(grep -E '^(DATABASE_URL|POSTGRES_URL)=' "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"'"'"'\r')"
+  [ -n "$DB_URL" ] || { echo "ERROR: $ENV_FILE has no DATABASE_URL"; exit 1; }
+fi
 
 SERVICE="screenplays-cowrite"
 REGION="us-central1"          # Cloud Run free tier region
@@ -64,7 +73,7 @@ gcloud builds submit --tag "$IMAGE" --quiet
 
 echo "Deploying…"
 ENV_VARS="NODE_ENV=production,DB_TYPE=postgresql,DB_HOST=$DB_HOST,DB_PORT=$DB_PORT,DB_NAME=$DB_NAME,DB_USER=$DB_USER,DB_SSL=true"
-ENV_VARS="$ENV_VARS,CORS_ORIGINS=$SITE_ORIGIN,APP_URL=$APP_URL,GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID,DATA_DIR=/app/data"
+ENV_VARS="$ENV_VARS,CORS_ORIGINS=$SITE_ORIGIN,APP_URL=$APP_URL,GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID"  # DATA_DIR=/app/data comes from the Dockerfile
 ENV_VARS="$ENV_VARS,DOC_IDLE_TIMEOUT_MINUTES=30,WS_MAX_CONNECTIONS_PER_IP=50,WS_MAX_CONNECTIONS_PER_USER=10"
 [ -n "$ADMIN_EMAIL" ] && ENV_VARS="$ENV_VARS,ADMIN_EMAILS=$ADMIN_EMAIL"
 

@@ -81,3 +81,6 @@ fastlane/keys/
 
 # Videos
 Videos/
+
+# Neon project link (SwissCirkus fork)
+.neon
