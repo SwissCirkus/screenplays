@@ -215,7 +215,7 @@ const TableReadPanel: React.FC<{ editor: Editor }> = ({ editor }) => {
   };
 
   const readerOf = (l: ReadLine) => {
-    const id = l.speaker && (l.kind === 'dialogue' || l.kind === 'lyrics') ? casting[l.speaker] : casting[NARRATOR_KEY];
+    const id = !options.singleVoice && l.speaker && (l.kind === 'dialogue' || l.kind === 'lyrics') ? casting[l.speaker] : casting[NARRATOR_KEY];
     return voiceName(id);
   };
 
@@ -379,6 +379,19 @@ const TableReadPanel: React.FC<{ editor: Editor }> = ({ editor }) => {
                   {t('tableRead.autoAssignAll')}
                 </button>
               </div>
+              {/* SwissCirkus fork (Christian 2026-11-15): one voice for the whole script, read like a narrator. Ticking it also
+                  turns on the character names, so you can still tell who speaks; untick those separately if you like. */}
+              <label className="table-read-check" title="The narrator's voice reads every line, the characters' too">{/* i18n-ignore: SwissCirkus fork */}
+                <input
+                  type="checkbox"
+                  checked={!!options.singleVoice}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setOption(on ? { singleVoice: true, announceCharacters: true } : { singleVoice: false }, true);
+                  }}
+                />
+                {'Single voice (narrator reads everything)' /* i18n-ignore: SwissCirkus fork */}
+              </label>
               <div className="table-read-cast-row">
                 <span className="table-read-cast-name">{t('tableRead.narrator')}</span>
                 <VoicePicker
@@ -389,7 +402,7 @@ const TableReadPanel: React.FC<{ editor: Editor }> = ({ editor }) => {
                   automaticVoiceId={casting[NARRATOR_KEY]}
                 />
               </div>
-              {speakers.map((name) => {
+              {!options.singleVoice && speakers.map((name) => {
                 const profile = profiles.find((p) => p.name === name);
                 return (
                   <div key={name} className="table-read-cast-row">

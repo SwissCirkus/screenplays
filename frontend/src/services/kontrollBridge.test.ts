@@ -136,10 +136,21 @@ describe("Table Read on Kontroll's local voices", () => {
     store.setState({ engineChosen: false, aiProvider: '' });
     vs.chooseKontrollVoicesIfUnset();
     expect(store.getState()).toMatchObject({ aiProvider: 'kontroll', enginePreference: 'ai', engineChosen: true });
-    // a choice already made is never changed
+    // "System voices" has nothing to read with in Kontroll's tab, so it moves to Kontroll's voices (Christian 2026-11-15)
     store.setState({ engineChosen: true, enginePreference: 'system', aiProvider: '' });
     vs.chooseKontrollVoicesIfUnset();
-    expect(store.getState()).toMatchObject({ enginePreference: 'system', aiProvider: '' });
+    expect(store.getState()).toMatchObject({ aiProvider: 'kontroll', enginePreference: 'ai' });
+    // another AI provider the writer picked is never changed
+    store.setState({ engineChosen: true, enginePreference: 'ai', aiProvider: 'elevenlabs' });
+    vs.chooseKontrollVoicesIfUnset();
+    expect(store.getState()).toMatchObject({ enginePreference: 'ai', aiProvider: 'elevenlabs' });
+  });
+
+  it('inside Kontroll, Table Read offers only AI voices (Kontroll voices), never the empty System voices', async () => {
+    const eng = await import('./tts/engines');
+    expect(eng.availableEngineKinds()).toEqual(['ai']);
+    expect(eng.activeEngineKind({ enginePreference: 'system', engineChosen: true })).toBe('ai');
+    expect(eng.selectedEngineKind({ enginePreference: 'system', engineChosen: true, aiProvider: 'kontroll', apiKeys: {}, compatibleBaseUrl: '' })).toBe('ai');
   });
 
   it('the voice engine reads Kontroll voices and the settings only offer them inside Kontroll', () => {

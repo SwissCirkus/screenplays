@@ -19,6 +19,7 @@ import { AiEngine } from './aiEngine';
 import { NativeEngine } from './nativeEngine';
 import { hasWebSpeech, WebSpeechEngine } from './webSpeechEngine';
 import { TtsUnavailableError, type EngineKind, type TtsEngine, type VoiceInfo } from './types';
+import { inKontroll } from '../kontrollBridge';
 
 /** Thrown when a read needs an AI provider and none is configured yet. */
 export class NeedsProviderError extends TtsUnavailableError {
@@ -30,6 +31,9 @@ export class NeedsProviderError extends TtsUnavailableError {
 
 /** Engine families this platform can offer. */
 export function availableEngineKinds(): EngineKind[] {
+  // SwissCirkus fork (Christian 2026-11-15): Kontroll's Screenplay tab offers no system speech voices, so there the voices
+  // are Kontroll's own (the 'kontroll' AI provider) and "System voices" isn't offered.
+  if (inKontroll()) return ['ai'];
   return isTauri() || hasWebSpeech() ? ['system', 'ai'] : ['ai'];
 }
 
@@ -38,6 +42,7 @@ export function activeEngineKind(
   s: Pick<VoiceSettingsState, 'enginePreference' | 'engineChosen'> = useVoiceSettingsStore.getState(),
 ): EngineKind {
   if (isTauri()) return s.enginePreference === 'ai' ? 'ai' : 'system';
+  if (inKontroll()) return 'ai';
   // A browser with no speech synthesis has only AI voices to offer. One that
   // has it reads with nothing until the writer has chosen: 'ai' with no
   // provider configured is what opens the setup dialog.

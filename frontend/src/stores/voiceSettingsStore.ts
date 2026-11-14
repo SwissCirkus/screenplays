@@ -79,6 +79,8 @@ export interface TableReadOptions {
   announceCharacters: boolean;
   /** Scroll the script to keep the line being read on screen. */
   followScript: boolean;
+  /** One voice for everything: the narrator reads the characters' lines too (SwissCirkus fork, Christian 2026-11-15). */
+  singleVoice: boolean;
   /** 0.5–2; 1 is each engine's normal speed. */
   rate: number;
 }
@@ -130,6 +132,7 @@ export const DEFAULT_TABLE_READ_OPTIONS: TableReadOptions = {
   readTransitions: true,
   announceCharacters: false,
   followScript: true,
+  singleVoice: false,
   rate: 1,
 };
 
@@ -297,12 +300,15 @@ export function providerIsRemote(id: AiProviderId | ''): boolean {
 
 /**
  * Inside Kontroll, a writer who has not chosen how Table Read speaks yet gets
- * Kontroll's own local voices (SwissCirkus fork). Any choice already made —
- * the machine's voices, another provider — is left exactly as it is.
+ * Kontroll's own local voices (SwissCirkus fork). So does one who chose the
+ * machine's voices: Kontroll's Screenplay tab has none to offer (Christian
+ * 2026-11-15, "This browser offers no speech voices"). Another AI provider the
+ * writer picked is left exactly as it is.
  */
 export function chooseKontrollVoicesIfUnset(): void {
   const s = useVoiceSettingsStore.getState();
-  if (s.engineChosen || s.aiProvider) return;
+  const choseSystem = s.engineChosen && s.enginePreference !== 'ai';
+  if (!choseSystem && (s.engineChosen || s.aiProvider)) return;
   s.setAiProvider('kontroll');
   s.setEnginePreference('ai');
 }

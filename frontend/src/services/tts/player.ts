@@ -81,7 +81,9 @@ function cast(lines: ReadLine[]): Casting {
 }
 
 /** Narrator for everything but speech; parentheticals are directions, so the narrator reads those too. */
-function voiceFor(line: ReadLine, casting: Casting): string | null {
+export function voiceFor(line: ReadLine, casting: Casting): string | null {
+  // Single voice: the narrator reads every line, characters' included.
+  if (useVoiceSettingsStore.getState().options.singleVoice) return casting.narrator;
   if (line.speaker && (line.kind === 'dialogue' || line.kind === 'lyrics')) {
     return casting.bySpeaker.get(line.speaker) ?? casting.narrator;
   }
