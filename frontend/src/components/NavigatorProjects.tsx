@@ -392,6 +392,15 @@ const NavigatorProjects: React.FC = () => {
         <button type="button" className="nav-projects-manage" onClick={manageProjects} title={t('navigator.projects.manageTip')}>
           {t('navigator.projects.manage')}
         </button>
+        {/* SwissCirkus: the Projects page's drop box, for bringing in a pile of old scripts */}
+        <button
+          type="button"
+          className="nav-projects-manage"
+          onClick={manageProjects}
+          title="Drop many old scripts (or whole folders) on the Projects page; file them as they are or let Smart organise group them into projects" // i18n-ignore
+        >
+          Bring in scripts…{/* i18n-ignore */}
+        </button>
       </div>
       <div className="navigator-list nav-projects" onContextMenu={(e) => openMenu(e, backgroundItems())}>
         {newProject !== null && (

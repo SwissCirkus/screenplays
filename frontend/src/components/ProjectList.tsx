@@ -22,6 +22,7 @@ import { api } from '../services/api';
 import { cloudApi } from '../services/cloudApi';
 import { isWeb, isDesktopTauri, browserLibrary } from '../services/platform';
 import { getApiBase } from '../config';
+import BulkImportBox from './BulkImportBox';
 import { useProjectStore } from '../stores/projectStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import type { ProjectInfo } from '../services/api';
@@ -705,6 +706,11 @@ const ProjectList: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* SwissCirkus: drop a pile of old scripts here; file them as they are or let Smart organise group them. */}
+      {source === 'local' && !loading && (
+        <BulkImportBox projects={projects} onBuilt={() => { void fetchProjects(); }} onOpenProject={openProject} />
+      )}
 
       {loading ? (
         <div className="project-list-loading">{t('list.loading')}</div>
