@@ -381,6 +381,14 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
 
   // ── Responsive overflow ──────────────────────────────────────────────
   const toolbarRef = useRef<HTMLDivElement>(null);
+  // The toolbar's element as state too, so the measuring/centring effect below starts again on a NEW element. It used to
+  // run once and keep watching the element it first saw: when the bar was put back (e.g. the editor coming up after the
+  // welcome screen) it watched a stale node, and the centring over the page never happened (SwissCirkus, 2026-11-14).
+  const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null);
+  const attachToolbar = useCallback((el: HTMLDivElement | null) => {
+    toolbarRef.current = el;
+    setToolbarEl(el);
+  }, []);
   const [hiddenPriorities, setHiddenPriorities] = useState<Set<string>>(new Set());
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
@@ -523,19 +531,32 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
       cancelAnimationFrame(centerRafId);
       centerRafId = requestAnimationFrame(() => {
         centerToolbarOverPage(toolbar);
-        const target = toolbarCenterTarget(toolbar.ownerDocument);
+        const doc = toolbar.ownerDocument;
+        // The editor area and the page can come after the toolbar (the editor loads a moment later): watch them as
+        // soon as they exist, and look again shortly while they don't.
+        const main = doc.querySelector<HTMLElement>('.editor-main');
+        if (main && main !== observedMain) {
+          if (observedMain) pageRo.unobserve(observedMain);
+          observedMain = main;
+          pageRo.observe(main);
+        }
+        const target = toolbarCenterTarget(doc);
         if (target && target !== observedTarget) {
           if (observedTarget) pageRo.unobserve(observedTarget);
           observedTarget = target;
           pageRo.observe(target);
         }
+        if (!target && retries < 40) { retries += 1; retryTimer = setTimeout(recenter, 250); }
       });
     };
     let centerRafId = 0;
+    let retries = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let observedTarget: HTMLElement | null = null;
+    let observedMain: HTMLElement | null = null;
     const pageRo = new ResizeObserver(recenter);
     const editorMain = toolbar.ownerDocument.querySelector<HTMLElement>('.editor-main');
-    if (editorMain) pageRo.observe(editorMain);
+    if (editorMain) { pageRo.observe(editorMain); observedMain = editorMain; }
     recenterRef.current = recenter;
     recenter();
     // Phone chrome switched on or off (main.tsx): every button changed size.
@@ -564,6 +585,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
       ro.disconnect();
       pageRo.disconnect();
       cancelAnimationFrame(centerRafId);
+      if (retryTimer) clearTimeout(retryTimer);
       recenterRef.current = () => {};
       window.removeEventListener(PHONE_DEVICE_CHANGE_EVENT, remeasure);
       if (breakpoint) {
@@ -575,7 +597,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
       }
       cancelAnimationFrame(rafId);
     };
-  }, [toolbarMode, foldState.foldable, foldState.size]);
+  }, [toolbarMode, foldState.foldable, foldState.size, toolbarEl]);
 
   // ── Notes handler (shared between inline and overflow) ──
   const handleNotesClick = useCallback((e: React.PointerEvent | React.MouseEvent) => {
@@ -1047,7 +1069,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
   return (
     <div
       className={`toolbar has-nav-toggle${(toolbarMode === 'comfortable' || (foldState.foldable && foldState.size === 'phone' && toolbarMode === 'hidden')) ? ' toolbar-comfortable' : ''}${isInsideAvRow ? ' toolbar-av' : ''}`}
-      ref={toolbarRef}
+      ref={attachToolbar}
       role="group" aria-label={t('common:accessibility.formattingControls')}
     >
       {/* SwissCirkus (Christian 2026-11-14): the Navigator ☰ sits at the toolbar's left edge and stays there; the tools after it
