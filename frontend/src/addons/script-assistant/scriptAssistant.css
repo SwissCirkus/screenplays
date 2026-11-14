@@ -6,7 +6,8 @@
 }
 .sa-header {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 10px 12px; border-bottom: 1px solid var(--fd-border); flex-shrink: 0;
+  /* right: room for the panel host's ✕ (PluginPanelTabs.css .plugin-panel-tabs__close, 22px at right 8px), so the bin isn't under it */
+  padding: 10px 40px 10px 12px; border-bottom: 1px solid var(--fd-border); flex-shrink: 0;
 }
 .sa-title { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .sa-title svg { color: var(--fd-accent); }
@@ -17,12 +18,17 @@
 .sa-icon-btn:hover:not(:disabled) { background: var(--fd-overlay-light); color: var(--fd-text); }
 .sa-icon-btn:disabled { opacity: .35; cursor: default; }
 
-.sa-model { display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; font-size: 12px; color: var(--fd-text-muted); flex-shrink: 0; }
+.sa-model { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fd-text-muted); flex-shrink: 0; }
 .sa-model select {
   flex: 1; min-width: 0; height: 26px; padding: 0 6px;
   background: var(--fd-input-bg); color: var(--fd-text);
   border: 1px solid var(--fd-overlay-medium); border-radius: 5px; font-size: 12px;
+  color-scheme: dark; /* the open list follows the panel's dark theme */
 }
+/* The open list's rows: dark background, light text — white on the system's light-grey list was unreadable (Christian 2026-11-14). */
+.sa-model select option { background: #1f1f1f; color: #ececec; }
+[data-theme="light"] .sa-model select { color-scheme: light; }
+[data-theme="light"] .sa-model select option { background: #fff; color: #111; }
 .sa-notice {
   margin: 10px 12px 0; padding: 8px 10px; border-radius: 6px; flex-shrink: 0;
   background: var(--fd-overlay-subtle); color: var(--fd-text-muted); font-size: 12px; line-height: 1.45;
@@ -99,9 +105,21 @@
 .sa-problems { font-size: 12px; color: var(--fd-text-muted); }
 .sa-proposal-actions { display: flex; gap: 6px; }
 
-.sa-input { display: flex; gap: 6px; align-items: flex-end; padding: 8px 12px 12px; border-top: 1px solid var(--fd-border); flex-shrink: 0; }
+/* Model above, a full-width box, mic + Send underneath (Christian 2026-11-14). */
+.sa-input { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 12px; border-top: 1px solid var(--fd-border); flex-shrink: 0; }
+/* Inside Kontroll its ? and chat buttons float over the window's bottom-right corner: keep Send above them. */
+.sa-in-kontroll .sa-input { padding-bottom: 46px; }
+.sa-input-actions { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+.sa-mic {
+  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; border-radius: 6px; cursor: pointer;
+  background: transparent; color: var(--fd-text-muted); border: 1px solid var(--fd-overlay-medium); font-size: 13px;
+}
+.sa-mic:hover:not(:disabled) { color: var(--fd-text); border-color: var(--fd-accent); }
+.sa-mic.live { background: #c0392b; border-color: #c0392b; color: #fff; animation: sa-mic-pulse 1.2s ease-in-out infinite; }
+.sa-mic:disabled { opacity: .5; cursor: default; }
+@keyframes sa-mic-pulse { 50% { opacity: .65; } }
 .sa-input textarea {
-  flex: 1; min-width: 0; resize: vertical; min-height: 54px; max-height: 40vh; padding: 6px 8px;
+  width: 100%; box-sizing: border-box; resize: vertical; min-height: 96px; max-height: 45vh; padding: 6px 8px;
   background: var(--fd-input-bg); color: var(--fd-text); border: 1px solid var(--fd-overlay-medium); border-radius: 6px;
   font: inherit; font-size: 12.5px; outline: none;
 }

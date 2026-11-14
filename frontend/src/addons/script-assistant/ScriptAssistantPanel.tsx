@@ -14,9 +14,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { useTranslation } from 'react-i18next';
-import { FaMagic, FaPaperPlane, FaStop, FaTrashAlt, FaPaperclip, FaTimes } from 'react-icons/fa';
+import { FaMagic, FaMicrophone, FaPaperPlane, FaStop, FaTrashAlt, FaPaperclip, FaTimes } from 'react-icons/fa';
 import {
-  inKontroll, kontrollAi, kontrollCancel, kontrollReadDoc, kontrollSetEngine, useKontrollBridge,
+  inKontroll, kontrollAi, kontrollCancel, kontrollMic, kontrollReadDoc, kontrollSetEngine, useKontrollBridge,
 } from '../../services/kontrollBridge';
 import { api } from '../../services/api';
 import { readProjectLink, openLinkInNewTab, type ProjectAsset } from '../../services/projectLinks';
@@ -68,9 +68,15 @@ function editorPlace(editor: Editor): { selection: BlockRange | null; cursor: nu
 const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
   const { t } = useTranslation('addons');
   const hello = useKontrollBridge((s) => s.hello);
+  const micOn = useKontrollBridge((s) => s.micOn);
+  const dictation = useKontrollBridge((s) => s.dictation);
   const currentProject = useProjectStore((s) => s.currentProject);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState('');
+  // Kontroll's dictation sends the box's whole text as it hears it.
+  useEffect(() => { if (dictation !== null) setInput(dictation); }, [dictation]);
+  // Closing the panel stops a mic that is still recording.
+  useEffect(() => () => { if (useKontrollBridge.getState().micOn) kontrollMic(false); }, []);
   const [busy, setBusy] = useState<null | 'docs' | 'model'>(null);
   const [docs, setDocs] = useState<DocRef[]>([]);
   const [projectDocs, setProjectDocs] = useState<DocRef[]>([]);
@@ -229,7 +235,7 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
   const examples = [t('scriptAssistant.examples.notes'), t('scriptAssistant.examples.outline'), t('scriptAssistant.examples.tighten')];
 
   return (
-    <div className="sa-panel">
+    <div className={`sa-panel${hello ? ' sa-in-kontroll' : ''}`}>
       <div className="sa-header">
         <span className="sa-title"><FaMagic /> {t('scriptAssistant.plugin.panel')}</span>
         <button
@@ -244,21 +250,7 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
         </button>
       </div>
 
-      {hello ? (
-        <label className="sa-model">
-          <span>{t('scriptAssistant.model')}</span>
-          <select
-            value={hello.engine}
-            disabled={!!busy}
-            onChange={(e) => { void kontrollSetEngine(e.target.value); }}
-          >
-            <option value="">{t('scriptAssistant.modelDefault', { name: hello.engines.find((e) => e.id === hello.fallback)?.label ?? hello.fallback })}</option>
-            {hello.engines.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
-          </select>
-        </label>
-      ) : (
-        <div className="sa-notice">{t('scriptAssistant.needsKontroll')}</div>
-      )}
+      {!hello && <div className="sa-notice">{t('scriptAssistant.needsKontroll')}</div>}
 
       <div className="sa-docs">
         {docs.map((d) => (
@@ -352,21 +344,51 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
         )}
       </div>
 
-      <form className="sa-input" onSubmit={(e) => { e.preventDefault(); void send(); }}>
+      {/* SwissCirkus (Christian 2026-11-14): the model sits right above the box; the box is full width; mic and Send sit under it,
+          and in Kontroll the whole block stays clear of Kontroll's ? and chat buttons in the bottom-right corner. */}
+      <form className="sa-input" onSubmit={(e) => { e.preventDefault(); if (micOn) kontrollMic(false); void send(); }}>
+        {hello && (
+          <label className="sa-model">
+            <span>{t('scriptAssistant.model')}</span>
+            <select
+              value={hello.engine}
+              disabled={!!busy}
+              onChange={(e) => { void kontrollSetEngine(e.target.value); }}
+            >
+              <option value="">{t('scriptAssistant.modelDefault', { name: hello.engines.find((e) => e.id === hello.fallback)?.label ?? hello.fallback })}</option>
+              {hello.engines.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
+            </select>
+          </label>
+        )}
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void send(); } }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (micOn) kontrollMic(false); void send(); } }}
           placeholder={t('scriptAssistant.placeholder')}
           aria-label={t('scriptAssistant.placeholder')}
-          rows={3}
+          rows={5}
           disabled={!hello}
         />
-        {busy === 'model' ? (
-          <button type="button" className="sa-send stop" onClick={stop} title={t('scriptAssistant.stop')}><FaStop /> {t('scriptAssistant.stop')}</button>
-        ) : (
-          <button type="submit" className="sa-send" disabled={!input.trim() || !!busy || !hello} title={t('scriptAssistant.send')}><FaPaperPlane /> {t('scriptAssistant.send')}</button>
-        )}
+        <div className="sa-input-actions">
+          {hello?.mic && (
+            <button
+              type="button"
+              className={`sa-mic${micOn ? ' live' : ''}`}
+              onClick={() => kontrollMic(!micOn, input)}
+              disabled={!!busy}
+              title={micOn ? 'Stop dictating' : 'Dictate — talk instead of typing (Kontroll records)'} // i18n-ignore: Kontroll-only
+              aria-label={micOn ? 'Stop dictating' : 'Dictate'} // i18n-ignore: Kontroll-only
+              aria-pressed={micOn}
+            >
+              <FaMicrophone />
+            </button>
+          )}
+          {busy === 'model' ? (
+            <button type="button" className="sa-send stop" onClick={stop} title={t('scriptAssistant.stop')}><FaStop /> {t('scriptAssistant.stop')}</button>
+          ) : (
+            <button type="submit" className="sa-send" disabled={!input.trim() || !!busy || !hello} title={t('scriptAssistant.send')}><FaPaperPlane /> {t('scriptAssistant.send')}</button>
+          )}
+        </div>
       </form>
     </div>
   );

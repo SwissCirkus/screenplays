@@ -19,10 +19,10 @@ describe('the Kontroll mailbox (window.__kScreen)', () => {
     expect(box.take()).toEqual([{ kind: 'hello' }]);
 
     // Kontroll's hello, exactly the shape app.js screenHello sends.
-    box.hello({ engines: [{ id: 'claude-sonnet', label: 'Claude Sonnet' }, { bad: 1 }], engine: '', fallback: 'claude-sonnet', docs: true, open: true });
+    box.hello({ engines: [{ id: 'claude-sonnet', label: 'Claude Sonnet' }, { bad: 1 }], engine: '', fallback: 'claude-sonnet', docs: true, open: true, story: true, mic: true });
     expect(bridge.inKontroll()).toBe(true);
     expect(bridge.useKontrollBridge.getState().hello).toEqual({
-      engines: [{ id: 'claude-sonnet', label: 'Claude Sonnet' }], engine: '', fallback: 'claude-sonnet', docs: true, open: true,
+      engines: [{ id: 'claude-sonnet', label: 'Claude Sonnet' }], engine: '', fallback: 'claude-sonnet', docs: true, open: true, story: true, mic: true,
     });
 
     const pending = bridge.kontrollAi('SYS', 'USER', 'gpt-5', 32000);
@@ -37,6 +37,29 @@ describe('the Kontroll mailbox (window.__kScreen)', () => {
     box.reply(String(dreq.id), { ok: false, needSignIn: true, error: 'Google wants a sign-in' });
     await expect(doc).resolves.toMatchObject({ ok: false, needSignIn: true, text: '' });
 
+    // Send to Kontroll Story Builder: the script's Fountain text and title; Kontroll answers with the scene count.
+    const sent = bridge.kontrollSendToStoryBuilder('Goldpaw', 'INT. LAB - DAY\n\nMara works.\n');
+    const [sreq] = box.take();
+    expect(sreq).toMatchObject({ kind: 'story', title: 'Goldpaw', fountain: 'INT. LAB - DAY\n\nMara works.\n' });
+    box.reply(String(sreq.id), { ok: true, scenes: 1, story: 'Story 1' });
+    await expect(sent).resolves.toEqual({ ok: true, scenes: 1, story: 'Story 1', error: '' });
+    const refused = bridge.kontrollSendToStoryBuilder('X', 'Y');
+    const [rreq] = box.take();
+    box.reply(String(rreq.id), { ok: false, error: 'Open a Kontroll project first' });
+    await expect(refused).resolves.toMatchObject({ ok: false, error: 'Open a Kontroll project first' });
+
+    // The Script Assistant's mic: start with the box's text, Kontroll says when it records and sends the dictated text.
+    const mbox = box as unknown as { dictated(t: string): void; micState(on: boolean): void };
+    bridge.kontrollMic(true, 'Tighten');
+    expect(box.take()).toEqual([{ kind: 'mic', on: true, text: 'Tighten' }]);
+    mbox.micState(true);
+    mbox.dictated('Tighten scene four');
+    expect(bridge.useKontrollBridge.getState()).toMatchObject({ micOn: true, dictation: 'Tighten scene four' });
+    bridge.kontrollMic(false);
+    expect(box.take()).toEqual([{ kind: 'mic', on: false }]);
+    mbox.micState(false);
+    expect(bridge.useKontrollBridge.getState().micOn).toBe(false);
+
     // A reply for a request nobody is waiting for is ignored.
     expect(() => box.reply('nope', { ok: true })).not.toThrow();
     log.mockRestore();
@@ -46,7 +69,7 @@ describe('the Kontroll mailbox (window.__kScreen)', () => {
     const { readHello } = await import('./kontrollBridge');
     expect(readHello(null)).toBeNull();
     expect(readHello('x')).toBeNull();
-    expect(readHello({})).toEqual({ engines: [], engine: '', fallback: '', docs: false, open: false });
+    expect(readHello({})).toEqual({ engines: [], engine: '', fallback: '', docs: false, open: false, story: false, mic: false });
   });
 });
 

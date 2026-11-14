@@ -47,7 +47,8 @@ import type { Editor as TiptapEditor } from '@tiptap/react';
  */
 const exportJSON = (editor: TiptapEditor) => withoutSuggestionsJSON(editor.getJSON());
 import { downloadFDX } from '../utils/fdxExporter';
-import { downloadFountain } from '../utils/fountainExporter';
+import { downloadFountain, exportFountain } from '../utils/fountainExporter';
+import { kontrollSendToStoryBuilder, useKontrollBridge } from '../services/kontrollBridge';
 import { exportFadeIn } from '../utils/osfExporter';
 import {
   serializeContentForFormat, extensionOfPath, isLinkableExtension, normalizeLinkedFormat, linkedFileName,
@@ -2166,6 +2167,20 @@ const MenuBar: React.FC<MenuBarProps> = ({
     }
   }, [editor, documentTitle]);
 
+  // SwissCirkus fork: inside Kontroll, hand the script to Story Builder as a new script revision (Kontroll says it can in hello).
+  const kontrollStory = useKontrollBridge((s) => s.hello?.story === true);
+  const handleSendToStoryBuilder = useCallback(async () => {
+    if (!editor) return;
+    const fountain = exportFountain(exportJSON(editor), {
+      revisionSettings: useEditorStore.getState().revisionSettings,
+      sceneNumbersVisible: useEditorStore.getState().sceneNumbersVisible,
+    });
+    if (!fountain.trim()) { showToast('The script is empty — nothing to send.', 'error'); return; } // i18n-ignore: Kontroll-only
+    const r = await kontrollSendToStoryBuilder(documentTitle || 'Untitled', fountain);
+    if (r.ok) showToast(`Sent to Story Builder${r.story ? ` (${r.story})` : ''} — ${r.scenes} scene${r.scenes === 1 ? '' : 's'}. Press Breakdown there when you're ready.`, 'success'); // i18n-ignore: Kontroll-only
+    else showToast(r.error, 'error');
+  }, [editor, documentTitle]);
+
   /**
    * AV-specific exports.
    *
@@ -3062,6 +3077,11 @@ const MenuBar: React.FC<MenuBarProps> = ({
             : t('menu:file.deleteScriptTipUnsaved'),
         },
         { separator: true, label: '' },
+        ...(kontrollStory ? [{
+          icon: <FaFileExport />, label: 'Send to Kontroll Story Builder', // i18n-ignore: Kontroll-only
+          title: "The script becomes a new script revision of the open Kontroll project's story, ready for Breakdown", // i18n-ignore: Kontroll-only
+          action: () => { void handleSendToStoryBuilder(); }, disabled: !editor,
+        }] : []),
         {
           icon: <FaFileExport />, label: t('menu:file.export'),
           children: [
@@ -4220,7 +4240,8 @@ const MenuBar: React.FC<MenuBarProps> = ({
       )
     ) : (
       <div className={menuBarClass} ref={menuRef}>
-        {renderMenuItems(true)}
+        {/* The Navigator ☰ lives at the formatting toolbar's left edge now (Toolbar.tsx, Christian 2026-11-14). */}
+        {renderMenuItems(false)}
       </div>
     )}
     {activeMenuData && createPortal(

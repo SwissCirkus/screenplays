@@ -11,7 +11,8 @@
  *
  * Requests: hello · ai {system,user,engine,maxTokens} · engine {engine} ·
  * doc {url} (a Google Doc's text, read with the writer's Google sign-in in
- * Kontroll) · open {url} (a link in a Kontroll web tab) · cancel.
+ * Kontroll) · open {url} (a link in a Kontroll web tab) · story {title,
+ * fountain} (the script into Story Builder) · cancel.
  *
  * In a plain browser nobody answers: `inKontroll()` stays false and the
  * features that need Kontroll say so.
@@ -28,13 +29,21 @@ export interface KontrollHello {
   fallback: string;
   docs?: boolean;
   open?: boolean;
+  /** Kontroll takes a script into Story Builder (File › Send to Kontroll Story Builder). */
+  story?: boolean;
+  /** Kontroll records the Script Assistant's mic (its own dictation) and types into the box. */
+  mic?: boolean;
 }
 
 interface BridgeState {
   hello: KontrollHello | null;
+  /** Kontroll's mic is recording for the Script Assistant. */
+  micOn: boolean;
+  /** The box's text as Kontroll's dictation has it (null = nothing new). */
+  dictation: string | null;
 }
 
-export const useKontrollBridge = create<BridgeState>(() => ({ hello: null }));
+export const useKontrollBridge = create<BridgeState>(() => ({ hello: null, micOn: false, dictation: null }));
 
 /** True once Kontroll has said hello on this page load. */
 export function inKontroll(): boolean {
@@ -48,6 +57,10 @@ interface Mailbox {
   take(): Request[];
   reply(id: string, data: Answer): void;
   hello(info: KontrollHello): void;
+  /** Kontroll's dictation: the box's whole text so far. */
+  dictated(text: string): void;
+  /** Kontroll's mic started (true) or stopped (false). */
+  micState(on: boolean): void;
 }
 
 declare global {
@@ -78,6 +91,8 @@ export function readHello(raw: unknown): KontrollHello | null {
     fallback: typeof r.fallback === 'string' ? r.fallback : '',
     docs: r.docs === true,
     open: r.open === true,
+    story: r.story === true,
+    mic: r.mic === true,
   };
 }
 
@@ -120,6 +135,8 @@ export function installKontrollBridge(): void {
       useKontrollBridge.setState({ hello });
       autoEnableAssistant();
     },
+    dictated: (text) => { useKontrollBridge.setState({ dictation: typeof text === 'string' ? text : '' }); },
+    micState: (on) => { useKontrollBridge.setState({ micOn: on === true }); },
   };
   post({ kind: 'hello' });
 }
@@ -170,6 +187,15 @@ export function kontrollCancel(): void {
   post({ kind: 'cancel' });
 }
 
+/**
+ * Start (with the box's current text, which dictation continues) or stop Kontroll's mic. While it records, Kontroll
+ * sends the box's whole text through `dictated`, and `micState` says when it starts and stops.
+ */
+export function kontrollMic(on: boolean, text = ''): void {
+  if (on) useKontrollBridge.setState({ dictation: null });
+  post({ kind: 'mic', on, ...(on ? { text } : {}) });
+}
+
 /** Make `engine` the Screenplay assistant role in Kontroll ('' = the overall assistant). */
 export async function kontrollSetEngine(engine: string): Promise<void> {
   await ask('engine', { engine }, 10_000);
@@ -218,6 +244,22 @@ export async function kontrollSpeak(voice: string, text: string, rate = 1): Prom
     base64: typeof a.base64 === 'string' ? a.base64 : '',
     mime: typeof a.mime === 'string' && a.mime ? a.mime : 'audio/wav',
     error: typeof a.error === 'string' && a.error ? a.error : 'Kontroll sent no audio.',
+  };
+}
+
+export interface StoryAnswer { ok: boolean; scenes: number; story: string; error: string }
+
+/**
+ * Hand the script (Fountain text) to Kontroll's Story Builder: it becomes a new script revision of the open
+ * project's story, ready for Breakdown. Nothing in the writer changes.
+ */
+export async function kontrollSendToStoryBuilder(title: string, fountain: string): Promise<StoryAnswer> {
+  const a = await ask('story', { title, fountain }, 60_000);
+  return {
+    ok: a.ok === true,
+    scenes: typeof a.scenes === 'number' ? a.scenes : 0,
+    story: typeof a.story === 'string' ? a.story : '',
+    error: typeof a.error === 'string' && a.error ? a.error : (a.ok === true ? '' : 'Kontroll could not take the script.'),
   };
 }
 

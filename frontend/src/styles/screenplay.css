@@ -731,6 +731,20 @@ body {
   position: relative; z-index: 20;
 }
 .toolbar.toolbar-comfortable { height: 36px; }
+/* The Navigator ☰ pinned to the toolbar's left edge (SwissCirkus): the padding leaves it room, and the centring
+   (utils/toolbarCentering.ts) only ever adds to that padding, so the tools never slide under it. */
+.toolbar.has-nav-toggle { padding-left: 40px; }
+.toolbar-navigator-toggle {
+  position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 24px; padding: 0; border: none; border-radius: 6px;
+  background: transparent; color: var(--fd-text-muted); font-size: 13px; cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.toolbar-navigator-toggle:hover { background: var(--fd-overlay-light); color: var(--fd-text); }
+.toolbar-navigator-toggle.active { color: var(--fd-accent); }
+.toolbar-navigator-toggle:focus-visible { outline: 2px solid var(--fd-accent); outline-offset: -2px; }
+.toolbar.toolbar-comfortable .toolbar-navigator-toggle { width: 34px; height: 30px; font-size: 15px; }
 .toolbar-group { display: flex; align-items: center; gap: 1px; }
 .toolbar-btn {
   display: flex; align-items: center; justify-content: center;

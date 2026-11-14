@@ -26,6 +26,7 @@ import {
   FaHashtag,
   FaPlus,
   FaTrashAlt,
+  FaBars,
 } from 'react-icons/fa';
 import { useEditorStore, useEditorFields } from '../stores/editorStore';
 import { useEditorSelector } from '../hooks/useEditorTransactions';
@@ -104,6 +105,8 @@ function selectCaret(ed: Editor | null) {
 const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
   const foldState = useFoldState();
   const { t } = useTranslation(['toolbar', 'common']);
+  const navigatorOpenNow = useEditorStore((s) => s.navigatorOpen);
+  const { t: tMenu } = useTranslation('menu');
   const {
     activeElement,
     setActiveElement,
@@ -444,6 +447,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
       let totalWidth = 0;
       for (const child of toolbar.children) {
         const el = child as HTMLElement;
+        if (el.classList.contains('toolbar-pinned-left')) continue; // the ☰ sits in the padding, outside the flow
         const w = el.offsetWidth;
         if (el.dataset.priority) {
           // CSS-hidden items (e.g. toolbar-desktop-only on mobile) have 0 width —
@@ -1042,10 +1046,23 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
 
   return (
     <div
-      className={`toolbar${(toolbarMode === 'comfortable' || (foldState.foldable && foldState.size === 'phone' && toolbarMode === 'hidden')) ? ' toolbar-comfortable' : ''}${isInsideAvRow ? ' toolbar-av' : ''}`}
+      className={`toolbar has-nav-toggle${(toolbarMode === 'comfortable' || (foldState.foldable && foldState.size === 'phone' && toolbarMode === 'hidden')) ? ' toolbar-comfortable' : ''}${isInsideAvRow ? ' toolbar-av' : ''}`}
       ref={toolbarRef}
       role="group" aria-label={t('common:accessibility.formattingControls')}
     >
+      {/* SwissCirkus (Christian 2026-11-14): the Navigator ☰ sits at the toolbar's left edge and stays there; the tools after it
+          are centred over the page and move with it (utils/toolbarCentering.ts). Placed absolutely, so centring never moves it. */}
+      <button
+        type="button"
+        className={`toolbar-navigator-toggle toolbar-pinned-left${navigatorOpenNow ? ' active' : ''}`}
+        aria-label={tMenu('view.navigator')}
+        aria-pressed={navigatorOpenNow}
+        title={tMenu('view.navigator')}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => useEditorStore.getState().toggleNavigator()}
+      >
+        <FaBars />
+      </button>
       {/* Undo / Redo — always visible */}
       <div className="toolbar-group">
         <button
@@ -1172,8 +1189,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
         {renderNotesTags()}
       </div>
 
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
+      {/* Spacer — the tools before it are centred over the page, the controls after it stay at the right */}
+      <div className="toolbar-spacer" style={{ flex: 1 }} />
 
       {/* Overflow 3-dot menu */}
       {hasOverflow && (

@@ -18,12 +18,14 @@ export interface ToolbarLeadInput {
   contentWidth: number;
   /** Middle of the page, measured from the toolbar's left edge, px. */
   targetCenter: number;
+  /** Room kept free at the right for the controls that stay there (the "…" menu, zoom), px. */
+  reserveRight?: number;
 }
 
 /** Left padding (px) that centres the buttons over `targetCenter`. */
-export function toolbarLeadPadding({ toolbarWidth, basePad, contentWidth, targetCenter }: ToolbarLeadInput): number {
-  if (![toolbarWidth, basePad, contentWidth, targetCenter].every(Number.isFinite)) return basePad;
-  const maxLead = toolbarWidth - basePad - contentWidth;
+export function toolbarLeadPadding({ toolbarWidth, basePad, contentWidth, targetCenter, reserveRight = 0 }: ToolbarLeadInput): number {
+  if (![toolbarWidth, basePad, contentWidth, targetCenter, reserveRight].every(Number.isFinite)) return basePad;
+  const maxLead = toolbarWidth - basePad - contentWidth - reserveRight;
   if (maxLead <= basePad) return basePad;
   const wanted = targetCenter - contentWidth / 2;
   return Math.round(Math.min(maxLead, Math.max(basePad, wanted)));
@@ -46,19 +48,26 @@ export function centerToolbarOverPage(toolbar: HTMLElement): void {
   if (style.flexWrap !== 'nowrap') return;
   const basePad = parseFloat(style.paddingLeft) || 0;
   const target = toolbarCenterTarget(toolbar.ownerDocument);
-  const visible = Array.from(toolbar.children).filter(
-    (el): el is HTMLElement => el instanceof HTMLElement && el.offsetWidth > 0,
-  );
-  if (!target || visible.length === 0) return;
+  // Only the formatting tools are centred: those before the stretchy spacer. The spacer itself always fills the
+  // slack (so centring "everything" never moved anything), the "…" menu and zoom after it stay at the right, and the
+  // Navigator ☰ is pinned to the left edge (absolutely placed; the stylesheet's padding leaves it room).
+  const children = Array.from(toolbar.children).filter((el): el is HTMLElement => el instanceof HTMLElement);
+  const spacerAt = children.findIndex((el) => el.classList.contains('toolbar-spacer'));
+  const shown = (el: HTMLElement) => el.offsetWidth > 0 && !el.classList.contains('toolbar-pinned-left');
+  const centred = (spacerAt >= 0 ? children.slice(0, spacerAt) : children).filter(shown);
+  const right = (spacerAt >= 0 ? children.slice(spacerAt + 1) : []).filter(shown);
+  if (!target || centred.length === 0) return;
   const barRect = toolbar.getBoundingClientRect();
-  const first = visible[0].getBoundingClientRect();
-  const last = visible[visible.length - 1].getBoundingClientRect();
+  const first = centred[0].getBoundingClientRect();
+  const last = centred[centred.length - 1].getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
+  const gap = parseFloat(style.columnGap) || 0;
   const lead = toolbarLeadPadding({
     toolbarWidth: barRect.width,
     basePad,
     contentWidth: last.right - first.left,
     targetCenter: targetRect.left + targetRect.width / 2 - barRect.left,
+    reserveRight: right.reduce((sum, el) => sum + el.offsetWidth + gap, 0) + gap,
   });
   if (lead !== basePad) toolbar.style.paddingLeft = `${lead}px`;
 }
