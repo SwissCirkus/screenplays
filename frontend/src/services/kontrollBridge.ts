@@ -43,9 +43,13 @@ interface BridgeState {
   micOn: boolean;
   /** The box's text as Kontroll's dictation has it (null = nothing new). */
   dictation: string | null;
+  /** The mic's live level while it records — nine bars, 0–1 (null = not recording). */
+  micLevels: number[] | null;
+  /** Stop was pressed: Kontroll is turning the recording into words. */
+  micStopping: boolean;
 }
 
-export const useKontrollBridge = create<BridgeState>(() => ({ hello: null, micOn: false, dictation: null }));
+export const useKontrollBridge = create<BridgeState>(() => ({ hello: null, micOn: false, dictation: null, micLevels: null, micStopping: false }));
 
 /** True once Kontroll has said hello on this page load. */
 export function inKontroll(): boolean {
@@ -63,6 +67,8 @@ interface Mailbox {
   dictated(text: string): void;
   /** Kontroll's mic started (true) or stopped (false). */
   micState(on: boolean): void;
+  /** The mic's live level (nine bars, 0–1), about 12 times a second while it records; null when it stops. */
+  micLevel(levels: number[] | null): void;
 }
 
 declare global {
@@ -139,7 +145,11 @@ export function installKontrollBridge(): void {
       autoEnableAssistant();
     },
     dictated: (text) => { useKontrollBridge.setState({ dictation: typeof text === 'string' ? text : '' }); },
-    micState: (on) => { useKontrollBridge.setState({ micOn: on === true }); },
+    micState: (on) => { useKontrollBridge.setState(on === true ? { micOn: true } : { micOn: false, micStopping: false, micLevels: null }); },
+    micLevel: (levels) => {
+      const ok = Array.isArray(levels) ? levels.slice(0, 16).map((v) => Math.max(0, Math.min(1, Number(v) || 0))) : null;
+      useKontrollBridge.setState({ micLevels: ok });
+    },
   };
   post({ kind: 'hello' });
 }
@@ -195,7 +205,8 @@ export function kontrollCancel(): void {
  * sends the box's whole text through `dictated`, and `micState` says when it starts and stops.
  */
 export function kontrollMic(on: boolean, text = ''): void {
-  if (on) useKontrollBridge.setState({ dictation: null });
+  if (on) useKontrollBridge.setState({ dictation: null, micStopping: false });
+  else if (useKontrollBridge.getState().micOn) useKontrollBridge.setState({ micStopping: true, micLevels: null });
   post({ kind: 'mic', on, ...(on ? { text } : {}) });
 }
 

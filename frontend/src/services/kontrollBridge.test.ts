@@ -49,16 +49,21 @@ describe('the Kontroll mailbox (window.__kScreen)', () => {
     await expect(refused).resolves.toMatchObject({ ok: false, error: 'Open a Kontroll project first' });
 
     // The Script Assistant's mic: start with the box's text, Kontroll says when it records and sends the dictated text.
-    const mbox = box as unknown as { dictated(t: string): void; micState(on: boolean): void };
+    const mbox = box as unknown as { dictated(t: string): void; micState(on: boolean): void; micLevel(l: number[] | null): void };
     bridge.kontrollMic(true, 'Tighten');
     expect(box.take()).toEqual([{ kind: 'mic', on: true, text: 'Tighten' }]);
     mbox.micState(true);
+    // the live level while it listens (Christian 2026-11-15: "so I know it's actually listening")
+    mbox.micLevel([0.2, 0.9, 1.4, -1]);
+    expect(bridge.useKontrollBridge.getState().micLevels).toEqual([0.2, 0.9, 1, 0]);
     mbox.dictated('Tighten scene four');
     expect(bridge.useKontrollBridge.getState()).toMatchObject({ micOn: true, dictation: 'Tighten scene four' });
     bridge.kontrollMic(false);
     expect(box.take()).toEqual([{ kind: 'mic', on: false }]);
+    // stopped: the words are being written out until Kontroll says it's done
+    expect(bridge.useKontrollBridge.getState()).toMatchObject({ micOn: true, micStopping: true, micLevels: null });
     mbox.micState(false);
-    expect(bridge.useKontrollBridge.getState().micOn).toBe(false);
+    expect(bridge.useKontrollBridge.getState()).toMatchObject({ micOn: false, micStopping: false });
 
     // A reply for a request nobody is waiting for is ignored.
     expect(() => box.reply('nope', { ok: true })).not.toThrow();

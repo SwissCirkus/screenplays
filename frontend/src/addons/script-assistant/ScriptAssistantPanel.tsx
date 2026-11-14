@@ -72,6 +72,8 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
   const hello = useKontrollBridge((s) => s.hello);
   const micOn = useKontrollBridge((s) => s.micOn);
   const dictation = useKontrollBridge((s) => s.dictation);
+  const micLevels = useKontrollBridge((s) => s.micLevels);
+  const micStopping = useKontrollBridge((s) => s.micStopping);
   const currentProject = useProjectStore((s) => s.currentProject);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState('');
@@ -399,12 +401,19 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
           disabled={!aiReady}
         />
         <div className="sa-input-actions">
+          {/* Kontroll's live mic level, so you can see it's listening; then a note while your words are written out. */}
+          {hello?.mic && micOn && !micStopping && (
+            <span className="sa-mic-meter" role="img" aria-label="Listening">{/* i18n-ignore: Kontroll-only */}
+              {(micLevels ?? Array(9).fill(0)).map((v, i) => <span key={i} style={{ height: `${Math.max(8, Math.round(v * 100))}%` }} />)}
+            </span>
+          )}
+          {hello?.mic && micStopping && <span className="sa-mic-note">{'Transcribing…' /* i18n-ignore: Kontroll-only */}</span>}
           {hello?.mic && (
             <button
               type="button"
               className={`sa-mic${micOn ? ' live' : ''}`}
               onClick={() => kontrollMic(!micOn, input)}
-              disabled={!!busy}
+              disabled={!!busy || micStopping}
               title={micOn ? 'Stop dictating' : 'Dictate — talk instead of typing (Kontroll records)'} // i18n-ignore: Kontroll-only
               aria-label={micOn ? 'Stop dictating' : 'Dictate'} // i18n-ignore: Kontroll-only
               aria-pressed={micOn}
