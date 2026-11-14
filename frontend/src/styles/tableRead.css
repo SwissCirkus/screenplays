@@ -480,3 +480,57 @@
 
 /* Cast title with Auto-assign all beside it (SwissCirkus fork). */
 .table-read-cast-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* ── Kontroll's look (SwissCirkus fork, Christian 2026-11-15: "stick to the visual language … for Kontroll") ──
+   Play: VideoEdit's white 40 px circle with a dark icon. The other transport buttons: plain icons, a faint square under the
+   mouse. Sliders: Kontroll's thin line with a small hollow ring that brightens under the mouse and takes the accent while
+   dragged (Kontroll's sliders.css). */
+.table-read-panel {
+  --tr-sl-line: color-mix(in srgb, var(--fd-text, #e8e8e8) 55%, transparent);
+  --tr-sl-ring: color-mix(in srgb, var(--fd-text, #e8e8e8) 88%, transparent);
+  --tr-sl-ring-hot: var(--fd-text, #f4f4f4);
+}
+.table-read-controls > button { border-radius: 6px; color: color-mix(in srgb, var(--fd-text) 82%, transparent); }
+.table-read-controls > button:hover:not(:disabled) { background: var(--fd-overlay-light); color: var(--fd-text); }
+.table-read-controls > .table-read-play {
+  width: 40px; min-width: 40px; height: 40px; padding: 0;
+  border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff; color: #111; margin: 0 3px; font-size: 14px;
+}
+.table-read-controls > .table-read-play:hover:not(:disabled) { background: #e8eaed; color: #111; filter: none; }
+.table-read-controls > .table-read-play svg { display: block; }
+.table-read-controls > .table-read-play .table-read-play-icon { margin-left: 2px; } /* the triangle sits optically centred */
+.table-read-controls > .table-read-play .table-read-spinner { border-color: rgba(0, 0, 0, 0.18); border-top-color: #111; }
+
+.table-read-panel input[type='range'],
+.voice-provider-settings input[type='range'] {
+  -webkit-appearance: none; appearance: none; background: transparent; accent-color: auto;
+  min-height: 14px; cursor: ew-resize;
+}
+.table-read-panel input[type='range']:focus,
+.voice-provider-settings input[type='range']:focus { outline: none; }
+.table-read-panel input[type='range']::-webkit-slider-runnable-track,
+.voice-provider-settings input[type='range']::-webkit-slider-runnable-track {
+  height: 1px; background: var(--tr-sl-line, rgba(232, 232, 232, 0.55)); border: 0; border-radius: 0;
+}
+.table-read-panel input[type='range']::-webkit-slider-thumb,
+.voice-provider-settings input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; box-sizing: border-box;
+  width: 10px; height: 10px; border-radius: 50%; margin-top: -4.5px;
+  border: 2px solid var(--tr-sl-ring, rgba(232, 232, 232, 0.88)); background: transparent; cursor: ew-resize;
+}
+.table-read-panel input[type='range']:hover::-webkit-slider-thumb,
+.voice-provider-settings input[type='range']:hover::-webkit-slider-thumb { border-color: var(--tr-sl-ring-hot, #f4f4f4); }
+.table-read-panel input[type='range']:active::-webkit-slider-thumb,
+.voice-provider-settings input[type='range']:active::-webkit-slider-thumb { border-color: var(--fd-accent, #4c9aff); }
+.table-read-panel input[type='range']:focus-visible::-webkit-slider-thumb,
+.voice-provider-settings input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px color-mix(in srgb, var(--fd-accent, #4c9aff) 45%, transparent); }
+/* Firefox */
+.table-read-panel input[type='range']::-moz-range-track,
+.voice-provider-settings input[type='range']::-moz-range-track { height: 1px; background: var(--tr-sl-line, rgba(232, 232, 232, 0.55)); border: 0; }
+.table-read-panel input[type='range']::-moz-range-thumb,
+.voice-provider-settings input[type='range']::-moz-range-thumb {
+  box-sizing: border-box; width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--tr-sl-ring, rgba(232, 232, 232, 0.88)); background: transparent;
+}
+.table-read-panel input[type='range']:active::-moz-range-thumb { border-color: var(--fd-accent, #4c9aff); }

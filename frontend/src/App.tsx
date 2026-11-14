@@ -18,6 +18,8 @@ import PdfImportPreviewHost from './components/PdfImportPreview';
 import VerifyEmailRoute from './components/VerifyEmailRoute';
 import ResetPasswordRoute from './components/ResetPasswordRoute';
 import { pluginRegistry } from './plugins/registry';
+import WebWelcome from './components/WebWelcome';
+import { browserLibrary } from './services/platform';
 // Registers the core add-ons (off until the writer turns them on). Imported
 // here rather than in main.tsx so OpenDraft-Pro, which reuses this App, gets
 // them too.
@@ -41,6 +43,8 @@ function App() {
 
   return (
     <>
+      {/* SwissCirkus web build: splash, and a sign-in card on the first visit. */}
+      {browserLibrary() && <WebWelcome />}
       <DemoBanner />
       <UpdateBanner />
       <Routes>

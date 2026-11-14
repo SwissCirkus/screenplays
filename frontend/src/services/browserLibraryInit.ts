@@ -8,6 +8,7 @@ import { createDriveSync, createFetchTransport, currentDriveToken, setAppDriveSy
 import { setWebAssetFetcher, authedFetch } from './authedFetch';
 import { createCollabClient } from './collabClient';
 import { collabServerHttp } from '../config';
+import { autoEnableAssistant } from './kontrollBridge';
 
 export const LIBRARY_CHANGED_EVENT = 'screenplays:library-changed';
 
@@ -35,6 +36,9 @@ export async function initBrowserLibrary(api: Record<string, unknown>): Promise<
   setAppDriveSync(sync);
   useDriveStatus.getState().set({ pending: (await sync.pending()).length });
   void resumeDrive(); // stay connected: the kept token, or a quiet reconnect (2026-11-14)
+  // The online writer has the Script Assistant too, on the writer's own AI key (Christian 2026-11-15): turned on the first
+  // time, as inside Kontroll — once, so turning it off in Settings › Add-ons keeps it off.
+  autoEnableAssistant();
 
   // Pick up work saved from elsewhere (Kontroll's Screenplay tab, another computer) without a reload: when the writer comes
   // back to this window, and every few minutes while it's open, look in Drive again — only while connected, at most once a

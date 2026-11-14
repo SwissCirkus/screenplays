@@ -441,7 +441,7 @@ const TableReadPanel: React.FC<{ editor: Editor }> = ({ editor }) => {
           title={playing ? t('tableRead.pauseTitle') : status === 'paused' ? t('tableRead.resumeTitle') : t('tableRead.playTitle')}
           aria-label={playing ? t('tableRead.pause') : t('tableRead.play')}
         >
-          {status === 'loading' ? <span className="table-read-spinner" aria-hidden="true" /> : playing ? <FaPause /> : <FaPlay />}
+          {status === 'loading' ? <span className="table-read-spinner" aria-hidden="true" /> : playing ? <FaPause /> : <FaPlay className="table-read-play-icon" />}
         </button>
         <button onClick={() => player.step(1)} disabled={!lines.length || current >= lines.length - 1} title={t('tableRead.nextLine')} aria-label={t('tableRead.nextLine')}><FaStepForward /></button>
         <button onClick={() => player.stepScene(1)} disabled={!lines.length} title={t('tableRead.nextScene')} aria-label={t('tableRead.nextScene')}><FaFastForward /></button>

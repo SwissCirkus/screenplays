@@ -1,0 +1,40 @@
+/* SwissCirkus web build: splash and first-visit sign-in (Christian 2026-11-15). */
+.ww-overlay {
+  position: fixed; inset: 0; z-index: 100000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  padding: 16px; background: #1a1a2e; color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Fades in after a moment, so Kontroll's tab (which says hello at once) never shows it. */
+  animation: ww-in .45s ease-out .18s both;
+  transition: opacity .35s ease;
+}
+.ww-overlay.ww-leaving { opacity: 0; }
+.ww-brand { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ww-logo { width: 150px; height: 150px; object-fit: contain; }
+.ww-name { margin-top: 18px; font-size: 30px; font-weight: 300; letter-spacing: 5px; }
+.ww-tagline { margin-top: 8px; font-size: 13px; letter-spacing: 1px; color: #8a8aa0; }
+.ww-spinner {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.1); border-top-color: #4a9eff;
+  animation: ww-spin .8s linear infinite;
+}
+.ww-card {
+  width: min(420px, 100%); padding: 22px; border-radius: 12px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  display: flex; flex-direction: column; gap: 14px; text-align: center;
+  animation: ww-in .4s ease-out both;
+}
+.ww-card p { margin: 0; font-size: 14px; line-height: 1.5; color: #c8c8d8; }
+.ww-google {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 11px 18px; border-radius: 8px; border: none; cursor: pointer;
+  background: #fff; color: #1f1f1f; font-size: 15px; font-weight: 500;
+}
+.ww-google:disabled { opacity: .7; cursor: default; }
+.ww-skip { background: none; border: none; color: #8a8aa0; font-size: 12.5px; cursor: pointer; text-decoration: underline; }
+.ww-skip:disabled { cursor: default; }
+.ww-problem { font-size: 12.5px; color: #ff9b8a; line-height: 1.45; }
+.ww-credit { position: absolute; bottom: 16px; font-size: 11px; color: #5c5c72; letter-spacing: .5px; }
+@keyframes ww-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ww-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ww-overlay, .ww-card, .ww-spinner { animation-duration: .01s; } }
