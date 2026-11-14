@@ -432,7 +432,9 @@
     "fromCursorTitle": "Lire à partir de l’endroit où se trouve le curseur dans le scénario",
     "fromCursor": "Depuis le curseur",
     "speed": "Vitesse {{value}}×",
-    "readingSpeed": "Vitesse de lecture"
+    "readingSpeed": "Vitesse de lecture",
+    "autoAssignAll": "Tout attribuer automatiquement",
+    "autoAssignAllTip": "Attribuer automatiquement à chaque personnage, et au narrateur, la voix choisie pour lui – une voix différente pour chacun"
   },
   "goals": {
     "title": "Objectifs et sprints d’écriture",

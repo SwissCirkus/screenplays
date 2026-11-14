@@ -525,6 +525,7 @@
     "audioNoDecode": "تعذّر فك ترميز الصوت من {{provider}}: {{message}}",
     "kokoroStopped": "توقف محرك صوت Kokoro: {{message}}",
     "kokoroUnknown": "خطأ غير معروف",
-    "systemStopped": "توقف محرك الكلام في النظام عن الاستجابة: {{message}}"
+    "systemStopped": "توقف محرك الكلام في النظام عن الاستجابة: {{message}}",
+    "needKontroll": "تعمل أصوات Kontroll في تبويب Screenplay في Kontroll — افتح السيناريو هناك، أو اختر مصدر صوت آخر."
   }
 }

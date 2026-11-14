@@ -489,6 +489,7 @@
     "audioNoDecode": "Не удалось декодировать звук от {{provider}}: {{message}}",
     "kokoroStopped": "Движок голоса Kokoro остановился: {{message}}",
     "kokoroUnknown": "неизвестная ошибка",
-    "systemStopped": "Системный движок речи перестал отвечать: {{message}}"
+    "systemStopped": "Системный движок речи перестал отвечать: {{message}}",
+    "needKontroll": "Голоса Kontroll работают во вкладке Screenplay в Kontroll — откройте сценарий там или выберите другой источник голоса."
   }
 }

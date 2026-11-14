@@ -453,6 +453,7 @@
     "audioNoDecode": "The audio from {{provider}} could not be decoded: {{message}}",
     "kokoroStopped": "The Kokoro voice engine stopped: {{message}}",
     "kokoroUnknown": "unknown error",
-    "systemStopped": "The system speech engine stopped responding: {{message}}"
+    "systemStopped": "The system speech engine stopped responding: {{message}}",
+    "needKontroll": "Kontroll's voices work in Kontroll's Screenplay tab — open the script there, or choose another voice source."
   }
 }

@@ -453,6 +453,7 @@
     "audioNoDecode": "{{provider}}-এর অডিও ডিকোড করা যায়নি: {{message}}",
     "kokoroStopped": "Kokoro ভয়েস ইঞ্জিন থেমে গেছে: {{message}}",
     "kokoroUnknown": "অজানা ত্রুটি",
-    "systemStopped": "সিস্টেম স্পিচ ইঞ্জিন সাড়া দেওয়া বন্ধ করেছে: {{message}}"
+    "systemStopped": "সিস্টেম স্পিচ ইঞ্জিন সাড়া দেওয়া বন্ধ করেছে: {{message}}",
+    "needKontroll": "Kontroll-এর কণ্ঠ Kontroll-এর Screenplay ট্যাবে কাজ করে — স্ক্রিপ্টটি সেখানে খুলুন, অথবা অন্য কোনো কণ্ঠের উৎস বেছে নিন।"
   }
 }

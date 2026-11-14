@@ -18,6 +18,7 @@ import { primeAudioPlayback } from '../services/tts/aiEngine';
 import { resetEngine } from '../services/tts/player';
 import { showToast } from './Toast';
 import Select from './Select';
+import { useKontrollBridge } from '../services/kontrollBridge';
 
 // i18n-ignore: the sentence the voice speaks in a test; it is audio content, not interface text
 const SAMPLE = 'This is how the script will sound in a table read.';
@@ -44,6 +45,7 @@ const VoiceProviderSettings: React.FC<{ autoFocus?: boolean }> = ({ autoFocus })
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const inApp = isTauri();
+  const kontrollHere = useKontrollBridge((st) => st.hello !== null);
   const provider = AI_PROVIDERS.find((p) => p.id === s.aiProvider);
   const configured = isAiProviderConfigured(s);
   const offersSystem = availableEngineKinds().includes('system');
@@ -51,11 +53,13 @@ const VoiceProviderSettings: React.FC<{ autoFocus?: boolean }> = ({ autoFocus })
 
   // The provider list in the store holds English defaults; what is shown is looked up by id.
   const providerLabel = (p: (typeof AI_PROVIDERS)[number]): string =>
-    p.id === 'kokoro' ? t('voice.providers.kokoro')
+    p.id === 'kontroll' ? t('voice.providers.kontroll')
+    : p.id === 'kokoro' ? t('voice.providers.kokoro')
       : p.id === 'openai-compatible' ? t('voice.providers.compatible')
         : p.label; // brand names
   const providerCost = (p: (typeof AI_PROVIDERS)[number]): string => {
     switch (p.id) {
+      case 'kontroll': return t('voice.cost.kontroll');
       case 'kokoro': return t('voice.cost.kokoro');
       case 'gemini': return t('voice.cost.gemini');
       case 'openai': return t('voice.cost.openai');
@@ -139,7 +143,9 @@ const VoiceProviderSettings: React.FC<{ autoFocus?: boolean }> = ({ autoFocus })
               onChange={(e) => changed(s.setAiProvider)(e.target.value as AiProviderId | '')}
             >
               <option value="">{t('voice.chooseProvider')}</option>
-              {AI_PROVIDERS.map((p) => <option key={p.id} value={p.id}>{providerLabel(p)}</option>)}
+              {/* Kontroll's voices only where Kontroll can answer (its Screenplay tab), or when already chosen. */}
+              {AI_PROVIDERS.filter((p) => p.id !== 'kontroll' || kontrollHere || s.aiProvider === 'kontroll')
+                .map((p) => <option key={p.id} value={p.id}>{providerLabel(p)}</option>)}
             </Select>
           </div>
 
@@ -153,7 +159,9 @@ const VoiceProviderSettings: React.FC<{ autoFocus?: boolean }> = ({ autoFocus })
 
           {provider?.local && (
             <div className="voice-provider-local" role="note">
-              {inApp ? t('voice.kokoroApp') : t('voice.kokoroBrowser')}
+              {provider.id === 'kontroll'
+                ? (kontrollHere ? t('voice.kontrollNote') : t('voice.kontrollMissing'))
+                : inApp ? t('voice.kokoroApp') : t('voice.kokoroBrowser')}
             </div>
           )}
 

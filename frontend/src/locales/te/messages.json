@@ -453,6 +453,7 @@
     "audioNoDecode": "{{provider}} నుండి వచ్చిన ఆడియోను డీకోడ్ చేయలేకపోయాం: {{message}}",
     "kokoroStopped": "Kokoro వాయిస్ ఇంజిన్ ఆగిపోయింది: {{message}}",
     "kokoroUnknown": "తెలియని పొరపాటు",
-    "systemStopped": "సిస్టమ్ స్పీచ్ ఇంజిన్ స్పందించడం ఆపేసింది: {{message}}"
+    "systemStopped": "సిస్టమ్ స్పీచ్ ఇంజిన్ స్పందించడం ఆపేసింది: {{message}}",
+    "needKontroll": "Kontroll వాయిస్‌లు Kontroll లోని Screenplay ట్యాబ్‌లో పనిచేస్తాయి — స్క్రిప్ట్‌ను అక్కడ తెరవండి, లేదా వేరే వాయిస్ మూలాన్ని ఎంచుకోండి."
   }
 }

@@ -432,7 +432,9 @@
     "fromCursorTitle": "Leer desde donde está el cursor en el guion",
     "fromCursor": "Desde el cursor",
     "speed": "Velocidad {{value}}×",
-    "readingSpeed": "Velocidad de lectura"
+    "readingSpeed": "Velocidad de lectura",
+    "autoAssignAll": "Asignar todo automáticamente",
+    "autoAssignAllTip": "Da a cada personaje, y al narrador, la voz elegida automáticamente para él: una voz distinta para cada uno"
   },
   "goals": {
     "title": "Metas y sprints de escritura",

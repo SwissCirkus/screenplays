@@ -95,7 +95,8 @@
     "confidentialityGemini": "Gemini'nin ücretsiz katmanında Google gönderdiklerinizi ürünlerini geliştirmek için kullanabilir ve insan değerlendiriciler okuyabilir.",
     "providers": {
       "kokoro": "Kokoro — ücretsiz, bu cihazda çalışır",
-      "compatible": "OpenAI uyumlu sunucu"
+      "compatible": "OpenAI uyumlu sunucu",
+      "kontroll": "Kontroll — yerel sesler (Kokoro, Kitten TTS, Pocket TTS)"
     },
     "cost": {
       "kokoro": "Ücretsiz, hesap gerekmez. Yalnızca İngilizce sesler.",
@@ -103,7 +104,8 @@
       "openai": "Ücretli, OpenAI tarafından karakter başına faturalandırılır.",
       "elevenlabs": "Her ay küçük bir ücretsiz hak; ötesi ücretli planlar.",
       "azure": "Ayda 500.000 karakterlik ücretsiz katman; ötesi ücretli.",
-      "compatible": "Sunucunuzun maliyeti ne ise o — kendi makinenizde çalışıyorsa ücretsiz."
+      "compatible": "Sunucunuzun maliyeti ne ise o — kendi makinenizde çalışıyorsa ücretsiz.",
+      "kontroll": "Ücretsiz. Kontroll her satırı bu bilgisayarda seslendirir."
     },
     "keyHint": {
       "gemini": "Gemini API anahtarı",
@@ -145,7 +147,9 @@
     "voicesPlaceholder": "Sunucuya sormak için boş bırakın",
     "voicesHint": "Sunucu kendi seslerini listeleyemiyorsa virgülle ayrılmış ses adları.",
     "testing": "Sınanıyor…",
-    "test": "Sesi sına"
+    "test": "Sesi sına",
+    "kontrollNote": "Kontroll bu bilgisayarda okur: senaryo bilgisayardan hiç çıkmaz. Kokoro hızlıdır; Kitten TTS ve Pocket TTS (Kontroll'un ses klasörüne yüklüyse) her satır için yeniden başlar, bu yüzden daha yavaştır.",
+    "kontrollMissing": "Kontroll sesleri, Kontroll'un Screenplay sekmesinde çalışır (Tabs › Open Screenplay). Burada başka bir ses kaynağı seçin ya da senaryoyu orada açın."
   },
   "addOns": {
     "toastOn": "{{name}} açık",

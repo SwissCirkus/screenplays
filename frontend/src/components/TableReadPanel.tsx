@@ -356,7 +356,29 @@ const TableReadPanel: React.FC<{ editor: Editor }> = ({ editor }) => {
             </div>
 
             <div className="table-read-settings-group table-read-cast">
-              <div className="table-read-settings-title">{t('tableRead.cast')}</div>
+              <div className="table-read-settings-title table-read-cast-title">
+                {t('tableRead.cast')}
+                {/* Every character (and the narrator) back to the voice cast for them automatically: a different one each. */}
+                <button
+                  type="button"
+                  className="table-read-link"
+                  title={t('tableRead.autoAssignAllTip')}
+                  onClick={() => {
+                    const slot = engineKind === 'ai' ? 'ai' : 'system';
+                    for (const name of speakers) {
+                      const profile = profiles.find((p) => p.name === name);
+                      if (!profile?.voice?.[slot]) continue;
+                      const voice = { ...profile.voice };
+                      delete voice[slot];
+                      upsertCharacterProfile(name, { voice });
+                    }
+                    setNarratorVoice(slot, undefined);
+                    player.restartCurrentLine();
+                  }}
+                >
+                  {t('tableRead.autoAssignAll')}
+                </button>
+              </div>
               <div className="table-read-cast-row">
                 <span className="table-read-cast-name">{t('tableRead.narrator')}</span>
                 <VoicePicker

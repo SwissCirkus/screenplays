@@ -71,3 +71,62 @@ describe('wiring', () => {
     expect(menu).toMatch(/detail: \{ panelId: 'script-assistant-panel' \}/);
   });
 });
+
+describe("Table Read on Kontroll's local voices", () => {
+  it('lists voices and speaks a line through the mailbox', async () => {
+    const bridge = await import('./kontrollBridge');
+    bridge.installKontrollBridge();
+    const box = win.__kScreen as { take(): Array<Record<string, unknown>>; reply(id: string, d: unknown): void };
+    box.take();
+    const list = bridge.kontrollVoices();
+    const [vreq] = box.take();
+    expect(vreq).toMatchObject({ kind: 'voices' });
+    // exactly what app.js screenVoices answers
+    box.reply(String(vreq.id), { ok: true, voices: [
+      { id: 'kokoro:af_heart', name: 'Heart', lang: 'en-US', gender: 'female', detail: 'Kokoro · US female' },
+      { id: 'pocket:javert', name: 'Javert', lang: '', gender: 'male', detail: 'Pocket TTS · slower, starts for every line' },
+      { id: 'no-colon', name: 'x' },
+    ] });
+    const voices = await list;
+    expect(voices.ok).toBe(true);
+    expect(voices.voices.map((v) => v.id)).toEqual(['kokoro:af_heart', 'pocket:javert']);
+
+    const said = bridge.kontrollSpeak('pocket:javert', 'Close it.');
+    const [treq] = box.take();
+    expect(treq).toMatchObject({ kind: 'tts', voice: 'pocket:javert', text: 'Close it.', rate: 1 });
+    box.reply(String(treq.id), { ok: true, base64: 'UklGRg==', mime: 'audio/wav' });
+    await expect(said).resolves.toMatchObject({ ok: true, base64: 'UklGRg==', mime: 'audio/wav' });
+
+    const failed = bridge.kontrollSpeak('kokoro:af_heart', 'Hi');
+    const [freq] = box.take();
+    box.reply(String(freq.id), { ok: false, error: 'Kokoro is still downloading' });
+    await expect(failed).resolves.toMatchObject({ ok: false, error: 'Kokoro is still downloading' });
+  });
+
+  it('Kontroll is a voice provider, configured only inside Kontroll, and picked when nothing was chosen yet', async () => {
+    const vs = await import('../stores/voiceSettingsStore');
+    expect(vs.AI_PROVIDERS[0]).toMatchObject({ id: 'kontroll', local: true });
+    expect(vs.providerIsRemote('kontroll')).toBe(false);
+    // hello already arrived above, so Kontroll is here
+    expect(vs.isAiProviderConfigured({ aiProvider: 'kontroll', apiKeys: {}, compatibleBaseUrl: '' })).toBe(true);
+    const store = vs.useVoiceSettingsStore;
+    store.setState({ engineChosen: false, aiProvider: '' });
+    vs.chooseKontrollVoicesIfUnset();
+    expect(store.getState()).toMatchObject({ aiProvider: 'kontroll', enginePreference: 'ai', engineChosen: true });
+    // a choice already made is never changed
+    store.setState({ engineChosen: true, enginePreference: 'system', aiProvider: '' });
+    vs.chooseKontrollVoicesIfUnset();
+    expect(store.getState()).toMatchObject({ enginePreference: 'system', aiProvider: '' });
+  });
+
+  it('the voice engine reads Kontroll voices and the settings only offer them inside Kontroll', () => {
+    const engine = src('./tts/aiEngine.ts');
+    expect(engine).toMatch(/p === 'kontroll'\) \{\s*list = await this\.kontrollVoiceList\(\);/);
+    expect(engine).toMatch(/const r = await kontrollSpeak\(voice, text\);/);
+    const ui = src('../components/VoiceProviderSettings.tsx');
+    expect(ui).toMatch(/p\.id !== 'kontroll' \|\| kontrollHere \|\| s\.aiProvider === 'kontroll'/);
+    const panel = src('../components/TableReadPanel.tsx');
+    expect(panel).toMatch(/t\('tableRead\.autoAssignAll'\)/);
+    expect(panel).toMatch(/setNarratorVoice\(slot, undefined\);/);
+  });
+});

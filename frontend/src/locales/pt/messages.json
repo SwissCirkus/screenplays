@@ -471,6 +471,7 @@
     "audioNoDecode": "Não foi possível decodificar o áudio de {{provider}}: {{message}}",
     "kokoroStopped": "O mecanismo de voz do Kokoro parou: {{message}}",
     "kokoroUnknown": "erro desconhecido",
-    "systemStopped": "O mecanismo de fala do sistema parou de responder: {{message}}"
+    "systemStopped": "O mecanismo de fala do sistema parou de responder: {{message}}",
+    "needKontroll": "As vozes do Kontroll funcionam na aba Screenplay do Kontroll — abra o roteiro lá ou escolha outra fonte de voz."
   }
 }

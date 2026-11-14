@@ -11,8 +11,9 @@
  */
 import { create } from 'zustand';
 import type { CharacterVoice } from './editorStore';
+import { inKontroll, useKontrollBridge } from '../services/kontrollBridge';
 
-export type AiProviderId = 'kokoro' | 'gemini' | 'openai' | 'elevenlabs' | 'azure' | 'openai-compatible';
+export type AiProviderId = 'kontroll' | 'kokoro' | 'gemini' | 'openai' | 'elevenlabs' | 'azure' | 'openai-compatible';
 
 export interface AiProviderInfo {
   id: AiProviderId;
@@ -30,6 +31,11 @@ export interface AiProviderInfo {
 
 // i18n-ignore-start: English defaults. VoiceProviderSettings looks the shown label, cost and key hint up by provider id.
 export const AI_PROVIDERS: AiProviderInfo[] = [
+  {
+    // SwissCirkus fork: Kontroll's own local voices, through the Kontroll bridge — offered only inside Kontroll.
+    id: 'kontroll', label: 'Kontroll — local voices (Kokoro, Kitten TTS, Pocket TTS)', keyHint: '', local: true,
+    cost: 'Free. Kontroll speaks each line on this computer.',
+  },
   {
     id: 'kokoro', label: 'Kokoro — free, runs on this device', keyHint: '', local: true,
     cost: 'Free, with no account. English voices only.',
@@ -277,6 +283,7 @@ export function isAiProviderConfigured(
   s: Pick<VoiceSettingsState, 'aiProvider' | 'apiKeys' | 'compatibleBaseUrl'> & Partial<Pick<VoiceSettingsState, 'azureRegion'>>,
 ): boolean {
   if (!s.aiProvider) return false;
+  if (s.aiProvider === 'kontroll') return inKontroll();
   if (s.aiProvider === 'kokoro') return true;
   if (s.aiProvider === 'openai-compatible') return /^https?:\/\//i.test(s.compatibleBaseUrl);
   if (s.aiProvider === 'azure') return !!s.apiKeys.azure && !!s.azureRegion;
@@ -287,3 +294,19 @@ export function isAiProviderConfigured(
 export function providerIsRemote(id: AiProviderId | ''): boolean {
   return !!id && !AI_PROVIDERS.find((p) => p.id === id)?.local;
 }
+
+/**
+ * Inside Kontroll, a writer who has not chosen how Table Read speaks yet gets
+ * Kontroll's own local voices (SwissCirkus fork). Any choice already made —
+ * the machine's voices, another provider — is left exactly as it is.
+ */
+export function chooseKontrollVoicesIfUnset(): void {
+  const s = useVoiceSettingsStore.getState();
+  if (s.engineChosen || s.aiProvider) return;
+  s.setAiProvider('kontroll');
+  s.setEnginePreference('ai');
+}
+
+useKontrollBridge.subscribe((state, prev) => {
+  if (state.hello && !prev.hello) chooseKontrollVoicesIfUnset();
+});

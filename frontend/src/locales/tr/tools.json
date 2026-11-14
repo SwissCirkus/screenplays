@@ -414,7 +414,9 @@
     "fromCursorTitle": "Senaryoda imlecin bulunduğu yerden oku",
     "fromCursor": "İmleçten",
     "speed": "Hız {{value}}×",
-    "readingSpeed": "Okuma hızı"
+    "readingSpeed": "Okuma hızı",
+    "autoAssignAll": "Tümünü otomatik ata",
+    "autoAssignAllTip": "Her karaktere ve anlatıcıya, onlar için otomatik seçilen sesi verir — her birine farklı bir ses"
   },
   "goals": {
     "title": "Yazma hedefleri ve sprintler",

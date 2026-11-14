@@ -95,7 +95,8 @@
     "confidentialityGemini": "On Gemini’s free tier, Google may use what you send to improve its products, and human reviewers may read it.",
     "providers": {
       "kokoro": "Kokoro — free, runs on this device",
-      "compatible": "OpenAI-compatible server"
+      "compatible": "OpenAI-compatible server",
+      "kontroll": "Kontroll — local voices (Kokoro, Kitten TTS, Pocket TTS)"
     },
     "cost": {
       "kokoro": "Free, with no account. English voices only.",
@@ -103,7 +104,8 @@
       "openai": "Paid, billed by OpenAI per character.",
       "elevenlabs": "Small free allowance each month; paid plans beyond it.",
       "azure": "Free tier of 500,000 characters a month; paid beyond it.",
-      "compatible": "Whatever your server costs — free when it runs on your own machine."
+      "compatible": "Whatever your server costs — free when it runs on your own machine.",
+      "kontroll": "Free. Kontroll speaks each line on this computer."
     },
     "keyHint": {
       "gemini": "Gemini API key",
@@ -145,7 +147,9 @@
     "voicesPlaceholder": "Leave empty to ask the server",
     "voicesHint": "Comma-separated voice names, if the server cannot list its own.",
     "testing": "Testing…",
-    "test": "Test voice"
+    "test": "Test voice",
+    "kontrollNote": "Read by Kontroll on this computer: the script never leaves it. Kokoro is quick; Kitten TTS and Pocket TTS (when installed in Kontroll's audio folder) start for every line, so they are slower.",
+    "kontrollMissing": "Kontroll's voices work in Kontroll's Screenplay tab (Tabs › Open Screenplay). Choose another voice source here, or open the script there."
   },
   "addOns": {
     "toastOn": "{{name}} is on",

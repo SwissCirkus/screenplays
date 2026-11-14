@@ -107,7 +107,8 @@
     "confidentialityGemini": "في الفئة المجانية من Gemini، قد تستخدم Google ما ترسله لتحسين منتجاتها، وقد يطّلع عليه مراجعون بشريون.",
     "providers": {
       "kokoro": "Kokoro — مجاني، يعمل على هذا الجهاز",
-      "compatible": "خادم متوافق مع OpenAI"
+      "compatible": "خادم متوافق مع OpenAI",
+      "kontroll": "Kontroll — أصوات محلية (Kokoro، Kitten TTS، Pocket TTS)"
     },
     "cost": {
       "kokoro": "مجاني ودون حساب. أصوات إنجليزية فقط.",
@@ -115,7 +116,8 @@
       "openai": "مدفوع، تحاسبك OpenAI لكل حرف.",
       "elevenlabs": "حصة مجانية صغيرة كل شهر؛ وخطط مدفوعة بعدها.",
       "azure": "فئة مجانية بـ 500,000 حرف شهريًا؛ ومدفوعة بعدها.",
-      "compatible": "بقدر تكلفة خادمك — مجاني عندما يعمل على جهازك."
+      "compatible": "بقدر تكلفة خادمك — مجاني عندما يعمل على جهازك.",
+      "kontroll": "مجاني. ينطق Kontroll كل سطر على هذا الحاسوب."
     },
     "keyHint": {
       "gemini": "مفتاح Gemini API",
@@ -161,7 +163,9 @@
     "voicesPlaceholder": "اتركه فارغًا لسؤال الخادم",
     "voicesHint": "أسماء أصوات مفصولة بفواصل، إن تعذّر على الخادم سرد أصواته.",
     "testing": "جارٍ الاختبار…",
-    "test": "اختبار الصوت"
+    "test": "اختبار الصوت",
+    "kontrollNote": "يقرأ Kontroll على هذا الحاسوب: لا يغادره السيناريو أبدًا. Kokoro سريع؛ أما Kitten TTS وPocket TTS (عند تثبيتهما في مجلد الصوت في Kontroll) فيبدآن مع كل سطر، لذا فهما أبطأ.",
+    "kontrollMissing": "تعمل أصوات Kontroll في تبويب Screenplay في Kontroll (Tabs › Open Screenplay). اختر مصدر صوت آخر هنا، أو افتح السيناريو هناك."
   },
   "addOns": {
     "toastOn": "{{name}} مفعّل",

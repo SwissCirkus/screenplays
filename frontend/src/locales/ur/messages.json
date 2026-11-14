@@ -453,6 +453,7 @@
     "audioNoDecode": "{{provider}} کی آڈیو ڈیکوڈ نہیں ہو سکی: {{message}}",
     "kokoroStopped": "Kokoro وائس انجن رک گیا: {{message}}",
     "kokoroUnknown": "نامعلوم خرابی",
-    "systemStopped": "سسٹم کا اسپیچ انجن جواب دینا بند ہو گیا: {{message}}"
+    "systemStopped": "سسٹم کا اسپیچ انجن جواب دینا بند ہو گیا: {{message}}",
+    "needKontroll": "Kontroll کی آوازیں Kontroll کے Screenplay ٹیب میں کام کرتی ہیں — اسکرپٹ وہاں کھولیں، یا آواز کا کوئی اور ماخذ چنیں۔"
   }
 }

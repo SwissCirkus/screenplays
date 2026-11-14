@@ -414,7 +414,9 @@
     "fromCursorTitle": "Read from where the cursor is in the script",
     "fromCursor": "From cursor",
     "speed": "Speed {{value}}×",
-    "readingSpeed": "Reading speed"
+    "readingSpeed": "Reading speed",
+    "autoAssignAll": "Auto-assign all",
+    "autoAssignAllTip": "Give every character, and the narrator, the voice chosen for them automatically — a different voice each"
   },
   "goals": {
     "title": "Writing Goals & Sprints",

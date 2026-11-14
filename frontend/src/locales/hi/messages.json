@@ -453,6 +453,7 @@
     "audioNoDecode": "{{provider}} का ऑडियो डीकोड नहीं हो सका: {{message}}",
     "kokoroStopped": "Kokoro आवाज़ इंजन रुक गया: {{message}}",
     "kokoroUnknown": "अज्ञात त्रुटि",
-    "systemStopped": "सिस्टम स्पीच इंजन ने जवाब देना बंद कर दिया: {{message}}"
+    "systemStopped": "सिस्टम स्पीच इंजन ने जवाब देना बंद कर दिया: {{message}}",
+    "needKontroll": "Kontroll की आवाज़ें Kontroll के Screenplay टैब में काम करती हैं — स्क्रिप्ट वहाँ खोलें, या आवाज़ का कोई और स्रोत चुनें।"
   }
 }

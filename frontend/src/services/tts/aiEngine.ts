@@ -18,6 +18,7 @@ import { TtsUnavailableError } from './types';
 import { WordClock, estimateDurationMs } from './wordClock';
 import { wordRanges } from './script';
 import { kokoroGenerate, kokoroVoices } from './kokoroClient';
+import { inKontroll, kontrollSpeak, kontrollVoices } from '../kontrollBridge';
 import { isTauri } from '../platform';
 import { t } from '../../i18n';
 
@@ -44,6 +45,7 @@ const GEMINI_VOICES: [string, string, 'female' | 'male'][] = [
 ];
 
 const PROVIDER_NAMES: Record<AiProviderId, string> = {
+  kontroll: 'Kontroll',
   kokoro: 'Kokoro',
   gemini: 'Gemini',
   openai: 'OpenAI',
@@ -353,6 +355,8 @@ export class AiEngine implements TtsEngine {
       list = GEMINI_VOICES.map(([name, character, gender]) => ({ id: `gemini:${name}`, name, lang: '', gender, detail: character }));
     } else if (p === 'azure') {
       list = await this.azureVoices();
+    } else if (p === 'kontroll') {
+      list = await this.kontrollVoiceList();
     } else if (p === 'kokoro') {
       list = await kokoroVoices();
     } else {
@@ -456,8 +460,24 @@ export class AiEngine implements TtsEngine {
     return job;
   }
 
+  /** Kontroll's local voices, as Kontroll lists them (SwissCirkus fork, services/kontrollBridge.ts). */
+  private async kontrollVoiceList(): Promise<VoiceInfo[]> {
+    if (!inKontroll()) throw new TtsUnavailableError(t('messages:tts.needKontroll'));
+    const r = await kontrollVoices();
+    if (!r.ok) throw new TtsUnavailableError(r.error || t('messages:tts.needKontroll'));
+    return r.voices.map((v) => ({ ...v, id: `kontroll:${v.id}` }));
+  }
+
   private async synthesise(text: string, voiceId: string, style?: string, signal?: AbortSignal): Promise<Clip> {
     const p = this.provider;
+    if (p === 'kontroll') {
+      const voice = bareVoice(p, voiceId);
+      if (!voice) throw new Error(t('messages:tts.needKontroll'));
+      const r = await kontrollSpeak(voice, text);
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      if (!r.ok) throw new Error(r.error);
+      return { url: URL.createObjectURL(new Blob([base64ToBytes(r.base64)], { type: r.mime || 'audio/wav' })) };
+    }
     if (p === 'kokoro') {
       const voice = bareVoice(p, voiceId);
       if (!voice) throw new Error(t('messages:tts.noKokoroVoice'));

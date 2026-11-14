@@ -453,6 +453,7 @@
     "audioNoDecode": "{{provider}} sesi çözülemedi: {{message}}",
     "kokoroStopped": "Kokoro ses motoru durdu: {{message}}",
     "kokoroUnknown": "bilinmeyen hata",
-    "systemStopped": "Sistem konuşma motoru yanıt vermeyi durdurdu: {{message}}"
+    "systemStopped": "Sistem konuşma motoru yanıt vermeyi durdurdu: {{message}}",
+    "needKontroll": "Kontroll sesleri, Kontroll'un Screenplay sekmesinde çalışır — senaryoyu orada açın ya da başka bir ses kaynağı seçin."
   }
 }

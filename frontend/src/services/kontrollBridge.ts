@@ -192,6 +192,35 @@ export async function kontrollReadDoc(url: string): Promise<DocAnswer> {
   };
 }
 
+export interface KontrollVoice { id: string; name: string; lang: string; gender?: 'female' | 'male'; detail?: string }
+
+/** Kontroll's local voices for Table Read: Kokoro's, plus Kitten TTS 2's and Pocket TTS's when installed. */
+export async function kontrollVoices(): Promise<{ ok: boolean; voices: KontrollVoice[]; error: string }> {
+  const a = await ask('voices', {}, 30_000);
+  const voices = (Array.isArray(a.voices) ? a.voices : [])
+    .map((v) => (v && typeof v === 'object' ? v as Record<string, unknown> : {}))
+    .filter((v) => typeof v.id === 'string' && /^[a-z0-9]+:.+/.test(v.id))
+    .map((v) => ({
+      id: String(v.id),
+      name: typeof v.name === 'string' && v.name ? v.name : String(v.id),
+      lang: typeof v.lang === 'string' ? v.lang : '',
+      ...(v.gender === 'female' || v.gender === 'male' ? { gender: v.gender } : {}),
+      ...(typeof v.detail === 'string' && v.detail ? { detail: v.detail } : {}),
+    } as KontrollVoice));
+  return { ok: a.ok === true && voices.length > 0, voices, error: typeof a.error === 'string' ? a.error : '' };
+}
+
+/** One line in a Kontroll voice ("kokoro:af_heart", "pocket:alba"…) → a base64 WAV. Local models can take a while. */
+export async function kontrollSpeak(voice: string, text: string, rate = 1): Promise<{ ok: boolean; base64: string; mime: string; error: string }> {
+  const a = await ask('tts', { voice, text, rate }, 5 * 60_000);
+  return {
+    ok: a.ok === true && typeof a.base64 === 'string' && a.base64.length > 0,
+    base64: typeof a.base64 === 'string' ? a.base64 : '',
+    mime: typeof a.mime === 'string' && a.mime ? a.mime : 'audio/wav',
+    error: typeof a.error === 'string' && a.error ? a.error : 'Kontroll sent no audio.',
+  };
+}
+
 /** Open a link in a Kontroll web tab. Resolves false when Kontroll refused it. */
 export async function kontrollOpen(url: string): Promise<boolean> {
   const a = await ask('open', { url }, 10_000);

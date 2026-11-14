@@ -453,6 +453,7 @@
     "audioNoDecode": "{{provider}} ର ଅଡିଓ ଡିକୋଡ୍ କରିହେଲା ନାହିଁ: {{message}}",
     "kokoroStopped": "Kokoro ସ୍ୱର ଇଞ୍ଜିନ୍ ବନ୍ଦ ହେଲା: {{message}}",
     "kokoroUnknown": "ଅଜଣା ତ୍ରୁଟି",
-    "systemStopped": "ସିଷ୍ଟମ୍ ସ୍ପିଚ୍ ଇଞ୍ଜିନ୍ ଉତ୍ତର ଦେବା ବନ୍ଦ କଲା: {{message}}"
+    "systemStopped": "ସିଷ୍ଟମ୍ ସ୍ପିଚ୍ ଇଞ୍ଜିନ୍ ଉତ୍ତର ଦେବା ବନ୍ଦ କଲା: {{message}}",
+    "needKontroll": "Kontroll ର ସ୍ୱର Kontroll ର Screenplay ଟାବ୍‌ରେ କାମ କରେ — ସ୍କ୍ରିପ୍ଟ ସେଠାରେ ଖୋଲନ୍ତୁ, କିମ୍ବା ଅନ୍ୟ ଏକ ସ୍ୱର ଉତ୍ସ ବାଛନ୍ତୁ।"
   }
 }

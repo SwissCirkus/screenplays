@@ -477,3 +477,6 @@
   background: rgba(224, 168, 0, 0.1);
 }
 .table-read-notice-warn::before { content: '⚠'; color: #e0a800; }
+
+/* Cast title with Auto-assign all beside it (SwissCirkus fork). */
+.table-read-cast-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

@@ -453,6 +453,7 @@
     "audioNoDecode": "{{provider}} ನ ಆಡಿಯೋ ಡಿಕೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ: {{message}}",
     "kokoroStopped": "Kokoro ಧ್ವನಿ ಎಂಜಿನ್ ನಿಂತುಹೋಯಿತು: {{message}}",
     "kokoroUnknown": "ಅಜ್ಞಾತ ದೋಷ",
-    "systemStopped": "ಸಿಸ್ಟಮ್ ಸ್ಪೀಚ್ ಎಂಜಿನ್ ಪ್ರತಿಕ್ರಿಯಿಸುವುದನ್ನು ನಿಲ್ಲಿಸಿತು: {{message}}"
+    "systemStopped": "ಸಿಸ್ಟಮ್ ಸ್ಪೀಚ್ ಎಂಜಿನ್ ಪ್ರತಿಕ್ರಿಯಿಸುವುದನ್ನು ನಿಲ್ಲಿಸಿತು: {{message}}",
+    "needKontroll": "Kontroll ನ ಧ್ವನಿಗಳು Kontroll ನ Screenplay ಟ್ಯಾಬ್‌ನಲ್ಲಿ ಕೆಲಸ ಮಾಡುತ್ತವೆ — ಸ್ಕ್ರಿಪ್ಟ್ ಅನ್ನು ಅಲ್ಲಿ ತೆರೆಯಿರಿ, ಅಥವಾ ಬೇರೆ ಧ್ವನಿ ಮೂಲವನ್ನು ಆರಿಸಿ."
   }
 }
