@@ -1714,11 +1714,36 @@ body {
 
 /* ── Navigator › Projects: the library as folders ── */
 .nav-projects-manage {
-  margin-left: auto; padding: 2px 8px; font-size: 11.5px;
+  margin-left: 4px; padding: 2px 8px; font-size: 11.5px;
   background: transparent; color: var(--fd-text); cursor: pointer;
   border: 1px solid var(--fd-overlay-medium); border-radius: 5px;
 }
 .nav-projects-manage:hover { background: var(--fd-overlay-light); }
+.nav-projects-new {
+  margin-left: auto; width: 22px; height: 22px; padding: 0; line-height: 1;
+  border: 1px solid var(--fd-overlay-medium); border-radius: 5px;
+  background: transparent; color: var(--fd-text); font-size: 14px; cursor: pointer;
+}
+.nav-projects-new:hover { background: var(--fd-overlay-light); }
+.nav-projects-new + .nav-projects-manage { margin-left: 4px; }
+.nav-project-new-form { margin: 2px 4px 6px; }
+.nav-project-color { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; }
+.nav-project-pin { flex-shrink: 0; font-size: 10px; opacity: .7; }
+.nav-project-rename { flex: 1; min-width: 0; height: 22px; }
+/* Navigator right-click menu (NavContextMenu.tsx), on the app's context-menu look */
+.nav-context-menu { min-width: 200px; }
+.nav-context-menu .ctx-item:focus-visible { outline: none; background: var(--fd-accent); color: #fff; }
+.nav-context-menu .nav-ctx-danger { color: #e06060; }
+.nav-context-menu .nav-ctx-danger:hover, .nav-context-menu .nav-ctx-danger:focus-visible { background: #c94a4a; color: #fff; }
+.nav-ctx-colors { padding: 4px 16px 6px; }
+.nav-ctx-colors-label { display: block; font-size: 11px; color: var(--fd-text-muted); margin-bottom: 4px; }
+.nav-ctx-swatches { display: grid; grid-template-columns: repeat(6, 18px); gap: 5px; }
+.nav-ctx-swatch {
+  width: 18px; height: 18px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; box-shadow: 0 0 0 1px var(--fd-border);
+}
+.nav-ctx-swatch.none { background: linear-gradient(135deg, transparent 45%, #e06060 45%, #e06060 55%, transparent 55%), var(--fd-input-bg); }
+.nav-ctx-swatch.selected, .nav-ctx-swatch:hover, .nav-ctx-swatch:focus-visible { border-color: var(--fd-text); outline: none; }
 .nav-project { border-radius: 6px; margin: 1px 4px; }
 .nav-project.drop-target { outline: 2px dashed var(--fd-accent); outline-offset: -2px; background: var(--fd-overlay-subtle); }
 .nav-project-row {

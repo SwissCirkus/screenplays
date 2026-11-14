@@ -7,6 +7,11 @@
  * a Google Doc opens it in a new browser tab. Links are added with the
  * "Add Google Doc" form or by dragging a link — a browser tab, an address-bar
  * URL or a link on a page — onto a project.
+ *
+ * Right-click does what Manage Projects does, in place: on a project — open
+ * its page, new script, add a Google Doc, rename, pin, colour, new project,
+ * delete; on a script — open, rename, duplicate, delete; on a link — open,
+ * copy, remove; on empty space — new project, Manage Projects, refresh.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +24,8 @@ import {
   dragMayCarryLink, isLinkAsset, linkDisplayName, linkFromDataTransfer, linkIcon, linkKind, normalizeLinkUrl,
 } from '../utils/linkAssets';
 import { showToast } from './Toast';
-import { scriptRoute } from '../utils/projectRoutes';
+import { EMPTY_SCREENPLAY, PROJECT_COLORS, scriptRoute } from '../utils/projectRoutes';
+import NavContextMenu, { type NavMenuItem, type NavMenuState } from './NavContextMenu';
 
 interface ProjectContents {
   scripts: ScriptMeta[];
@@ -42,6 +48,13 @@ async function loadContents(projectId: string): Promise<ProjectContents> {
   return { scripts: sorted, links, files };
 }
 
+function sortProjects(list: ProjectInfo[]): ProjectInfo[] {
+  return [...list].sort((a, b) =>
+    Number(b.pinned) - Number(a.pinned) || (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
+}
+
+interface Renaming { kind: 'project' | 'script'; projectId: string; id: string; value: string }
+
 const NavigatorProjects: React.FC = () => {
   const { t } = useTranslation('story');
   const navigate = useNavigate();
@@ -57,10 +70,21 @@ const NavigatorProjects: React.FC = () => {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkName, setLinkName] = useState('');
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [menu, setMenu] = useState<NavMenuState | null>(null);
+  const [renaming, setRenaming] = useState<Renaming | null>(null);
+  const [newProject, setNewProject] = useState<string | null>(null);
 
   const refreshProject = useCallback(async (projectId: string) => {
     const c = await loadContents(projectId);
     setContents((prev) => ({ ...prev, [projectId]: c }));
+  }, []);
+
+  const reloadProjects = useCallback(async () => {
+    try {
+      setProjects(sortProjects(await api.listProjects()));
+    } catch {
+      setProjects((prev) => prev ?? []);
+    }
   }, []);
 
   const isOpen = useCallback(
@@ -75,12 +99,7 @@ const NavigatorProjects: React.FC = () => {
   useEffect(() => {
     let live = true;
     api.listProjects()
-      .then((list) => {
-        if (!live) return;
-        const sorted = [...list].sort((a, b) =>
-          Number(b.pinned) - Number(a.pinned) || (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
-        setProjects(sorted);
-      })
+      .then((list) => { if (live) setProjects(sortProjects(list)); })
       .catch(() => { if (live) setProjects([]); });
     return () => { live = false; };
   }, []);
@@ -105,7 +124,7 @@ const NavigatorProjects: React.FC = () => {
     setOpened((prev) => { const next = new Set(prev); next.delete(projectId); return next; });
   };
 
-  const openScript = (projectId: string, script: ScriptMeta) => {
+  const openScript = (projectId: string, script: Pick<ScriptMeta, 'id' | 'format'>) => {
     if (currentProject?.id === projectId && currentScriptId === script.id) return;
     void leaveEditor(() => navigate(scriptRoute(projectId, script), { state: { from: `/project/${projectId}` } }));
   };
@@ -115,6 +134,12 @@ const NavigatorProjects: React.FC = () => {
   };
 
   const manageProjects = () => { void leaveEditor(() => navigate('/projects')); };
+
+  const failed = (err: unknown) => {
+    showToast(t('navigator.projects.actionFailed', { message: err instanceof Error ? err.message : String(err) }), 'error');
+  };
+
+  // ── Links ──
 
   const saveLink = async (projectId: string, rawUrl: string, name: string) => {
     const url = normalizeLinkUrl(rawUrl);
@@ -137,6 +162,11 @@ const NavigatorProjects: React.FC = () => {
     }
   };
 
+  const startAddLink = (projectId: string) => {
+    openFolder(projectId);
+    setAdding(projectId); setLinkUrl(''); setLinkName('');
+  };
+
   const removeLink = async (projectId: string, asset: ProjectAsset) => {
     if (!window.confirm(t('navigator.projects.removeLinkConfirm', { name: linkDisplayName(asset) }))) return;
     try {
@@ -146,6 +176,184 @@ const NavigatorProjects: React.FC = () => {
       showToast(t('navigator.projects.linkFailed'), 'error');
     }
   };
+
+  const copyLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast(t('navigator.projects.linkCopied'), 'success');
+    } catch (err) {
+      failed(err);
+    }
+  };
+
+  // ── Projects ──
+
+  const createProject = async (rawName: string) => {
+    const name = rawName.trim();
+    if (!name) return;
+    try {
+      const created = await api.createProject(name);
+      setNewProject(null);
+      await reloadProjects();
+      openFolder(created.id);
+      showToast(t('navigator.projects.projectCreated', { name }), 'success');
+    } catch (err) {
+      failed(err);
+    }
+  };
+
+  const updateProject = async (project: ProjectInfo, patch: Partial<Pick<ProjectInfo, 'name' | 'pinned' | 'color'>>) => {
+    setProjects((prev) => prev && sortProjects(prev.map((p) => (p.id === project.id ? { ...p, ...patch } : p))));
+    try {
+      await api.updateProject(project.id, patch);
+      if (currentProject?.id === project.id) useProjectStore.getState().setCurrentProject({ ...currentProject, ...patch });
+    } catch (err) {
+      failed(err);
+      await reloadProjects();
+    }
+  };
+
+  const deleteProject = async (project: ProjectInfo) => {
+    const count = contents[project.id]?.scripts.length;
+    const question = count === undefined
+      ? t('navigator.projects.deleteProjectConfirm', { name: project.name })
+      : t('navigator.projects.deleteProjectConfirmCount', { name: project.name, scripts: count });
+    if (!window.confirm(question)) return;
+    try {
+      // The open script belongs to it: leave the editor first, so nothing is saved back into a deleted project.
+      if (currentProject?.id === project.id) await leaveEditor(() => navigate('/projects'));
+      await api.deleteProject(project.id);
+      showToast(t('navigator.projects.projectDeleted', { name: project.name }), 'success');
+      await reloadProjects();
+    } catch (err) {
+      failed(err);
+    }
+  };
+
+  // ── Scripts ──
+
+  const newScript = async (projectId: string) => {
+    try {
+      const resp = await api.createScript(projectId, { title: t('navigator.projects.untitledScript'), format: 'screenplay', content: EMPTY_SCREENPLAY });
+      await refreshProject(projectId);
+      openFolder(projectId);
+      openScript(projectId, resp.meta);
+    } catch (err) {
+      failed(err);
+    }
+  };
+
+  const renameScript = async (projectId: string, scriptId: string, title: string) => {
+    try {
+      await api.saveScript(projectId, scriptId, { title });
+      await refreshProject(projectId);
+    } catch (err) {
+      failed(err);
+    }
+  };
+
+  const duplicateScript = async (projectId: string, script: ScriptMeta) => {
+    try {
+      await api.duplicateScript(projectId, script.id);
+      await refreshProject(projectId);
+      showToast(t('navigator.projects.scriptDuplicated', { name: script.title }), 'success');
+    } catch (err) {
+      failed(err);
+    }
+  };
+
+  const deleteScript = async (projectId: string, script: ScriptMeta) => {
+    if (!window.confirm(t('navigator.projects.deleteScriptConfirm', { name: script.title || t('navigator.projects.untitled') }))) return;
+    try {
+      if (currentProject?.id === projectId && currentScriptId === script.id) {
+        await leaveEditor(() => navigate(`/project/${projectId}`, { state: { from: '/projects' } }));
+      }
+      await api.deleteScript(projectId, script.id);
+      showToast(t('navigator.projects.scriptDeleted', { name: script.title }), 'success');
+      await refreshProject(projectId);
+    } catch (err) {
+      failed(err);
+    }
+  };
+
+  // ── Rename (inline) ──
+
+  const startRename = (r: Omit<Renaming, 'value'>, value: string) => setRenaming({ ...r, value });
+  const commitRename = async () => {
+    const r = renaming;
+    setRenaming(null);
+    if (!r) return;
+    const value = r.value.trim();
+    if (!value) return;
+    if (r.kind === 'project') {
+      const p = projects?.find((x) => x.id === r.id);
+      if (p && p.name !== value) await updateProject(p, { name: value });
+    } else {
+      const s = contents[r.projectId]?.scripts.find((x) => x.id === r.id);
+      if (s && s.title !== value) await renameScript(r.projectId, r.id, value);
+    }
+  };
+  const renameInput = (r: Renaming) => (
+    <input
+      autoFocus
+      className="nav-project-input nav-project-rename"
+      value={r.value}
+      aria-label={t('navigator.projects.rename')}
+      onChange={(e) => setRenaming({ ...r, value: e.target.value })}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); void commitRename(); }
+        if (e.key === 'Escape') { e.preventDefault(); setRenaming(null); }
+      }}
+      onBlur={() => { void commitRename(); }}
+    />
+  );
+
+  // ── Menus ──
+
+  const openMenu = (e: React.MouseEvent, items: NavMenuItem[]) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  };
+  const sep: NavMenuItem = { kind: 'separator' };
+  const L = (key: string) => t(`navigator.projects.${key}` as 'navigator.projects.open');
+
+  const backgroundItems = (): NavMenuItem[] => [
+    { label: L('newProject'), onSelect: () => setNewProject('') },
+    { label: L('manage'), onSelect: manageProjects },
+    sep,
+    { label: L('refresh'), onSelect: () => { requested.current.clear(); setContents({}); void reloadProjects(); } },
+  ];
+
+  const projectItems = (p: ProjectInfo): NavMenuItem[] => [
+    { label: L('openProject'), onSelect: () => openProjectPage(p.id) },
+    { label: L('newScript'), onSelect: () => { void newScript(p.id); } },
+    { label: L('addLink'), onSelect: () => startAddLink(p.id) },
+    sep,
+    { label: L('rename'), onSelect: () => startRename({ kind: 'project', projectId: p.id, id: p.id }, p.name) },
+    { label: p.pinned ? L('unpin') : L('pin'), onSelect: () => { void updateProject(p, { pinned: !p.pinned }); } },
+    { kind: 'colors', label: L('color'), colors: PROJECT_COLORS, current: p.color || '', noColorLabel: L('noColor'), onPick: (color) => { void updateProject(p, { color }); } },
+    sep,
+    { label: L('newProject'), onSelect: () => setNewProject('') },
+    { label: L('deleteProject'), danger: true, onSelect: () => { void deleteProject(p); } },
+  ];
+
+  const scriptItems = (projectId: string, s: ScriptMeta): NavMenuItem[] => [
+    { label: L('open'), onSelect: () => openScript(projectId, s), disabled: currentProject?.id === projectId && currentScriptId === s.id },
+    { label: L('rename'), onSelect: () => startRename({ kind: 'script', projectId, id: s.id }, s.title) },
+    { label: L('duplicate'), onSelect: () => { void duplicateScript(projectId, s); } },
+    sep,
+    { label: L('deleteScript'), danger: true, onSelect: () => { void deleteScript(projectId, s); } },
+  ];
+
+  const linkItems = (projectId: string, asset: ProjectAsset, url: string | null): NavMenuItem[] => [
+    { label: L('openLink'), disabled: !url, onSelect: () => { if (url) openLinkInNewTab(url); } },
+    { label: L('copyLink'), disabled: !url, onSelect: () => { if (url) void copyLink(url); } },
+    sep,
+    { label: L('removeLink'), danger: true, onSelect: () => { void removeLink(projectId, asset); } },
+  ];
 
   const dropProps = (projectId: string) => ({
     onDragOver: (e: React.DragEvent) => {
@@ -169,20 +377,47 @@ const NavigatorProjects: React.FC = () => {
 
   return (
     <>
-      <div className="navigator-header">
+      <div className="navigator-header" onContextMenu={(e) => openMenu(e, backgroundItems())}>
         <span className="navigator-title">{t('navigator.tabs.projects')}</span>
         {projects && <span className="scene-count">{projects.length}</span>}
+        <button
+          type="button"
+          className="nav-projects-new"
+          onClick={() => setNewProject('')}
+          title={t('navigator.projects.newProject')}
+          aria-label={t('navigator.projects.newProject')}
+        >
+          +
+        </button>
         <button type="button" className="nav-projects-manage" onClick={manageProjects} title={t('navigator.projects.manageTip')}>
           {t('navigator.projects.manage')}
         </button>
       </div>
-      <div className="navigator-list nav-projects">
+      <div className="navigator-list nav-projects" onContextMenu={(e) => openMenu(e, backgroundItems())}>
+        {newProject !== null && (
+          <form className="nav-project-add-form nav-project-new-form" onSubmit={(e) => { e.preventDefault(); void createProject(newProject); }}>
+            <input
+              autoFocus
+              className="nav-project-input"
+              placeholder={t('navigator.projects.newProjectName')}
+              aria-label={t('navigator.projects.newProjectName')}
+              value={newProject}
+              onChange={(e) => setNewProject(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setNewProject(null); }}
+            />
+            <div className="nav-project-add-actions">
+              <button type="submit" className="nav-project-btn primary" disabled={!newProject.trim()}>{t('navigator.projects.create')}</button>
+              <button type="button" className="nav-project-btn" onClick={() => setNewProject(null)}>{t('navigator.projects.cancel')}</button>
+            </div>
+          </form>
+        )}
         {projects === null && <div className="navigator-empty">{t('navigator.projects.loading')}</div>}
-        {projects?.length === 0 && <div className="navigator-empty">{t('navigator.projects.empty')}</div>}
+        {projects?.length === 0 && newProject === null && <div className="navigator-empty">{t('navigator.projects.empty')}</div>}
         {projects?.map((project) => {
           const folderOpen = isOpen(project.id);
           const c = contents[project.id];
           const isCurrent = currentProject?.id === project.id;
+          const renamingThis = renaming?.kind === 'project' && renaming.id === project.id ? renaming : null;
           return (
             <div
               key={project.id}
@@ -194,15 +429,25 @@ const NavigatorProjects: React.FC = () => {
                 role="button"
                 tabIndex={0}
                 aria-expanded={folderOpen}
-                onClick={() => toggle(project.id)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(project.id); } }}
-                title={t('navigator.projects.dropHint')}
+                onClick={() => { if (!renamingThis) toggle(project.id); }}
+                onContextMenu={(e) => openMenu(e, projectItems(project))}
+                onKeyDown={(e) => {
+                  if (renamingThis) return;
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(project.id); }
+                  if (e.key === 'F2') { e.preventDefault(); startRename({ kind: 'project', projectId: project.id, id: project.id }, project.name); }
+                  if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+                    e.preventDefault();
+                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setMenu({ x: r.left + 24, y: r.bottom, items: projectItems(project) });
+                  }
+                }}
+                title={t('navigator.projects.rowHint')}
               >
                 <span className={`location-chevron${folderOpen ? ' expanded' : ''}`} aria-hidden="true">&#9662;</span>
-                <span className="nav-project-folder" aria-hidden="true" style={project.color ? { color: project.color } : undefined}>
-                  {folderOpen ? '📂' : '📁'}
-                </span>
-                <span className="nav-project-name">{project.name}</span>
+                <span className="nav-project-folder" aria-hidden="true">{folderOpen ? '📂' : '📁'}</span>
+                {project.color && <span className="nav-project-color" style={{ background: project.color }} aria-hidden="true" />}
+                {renamingThis ? renameInput(renamingThis) : <span className="nav-project-name">{project.name}</span>}
+                {project.pinned && !renamingThis && <span className="nav-project-pin" aria-label={t('navigator.projects.pinned')} title={t('navigator.projects.pinned')}>{'📌'}</span>}
               </div>
               {folderOpen && (
                 <div className="nav-project-body">
@@ -212,12 +457,23 @@ const NavigatorProjects: React.FC = () => {
                       {c.scripts.length > 0 && <div className="nav-project-section">{t('navigator.projects.scripts')}</div>}
                       {c.scripts.map((s) => {
                         const isOpenScript = isCurrent && currentScriptId === s.id;
+                        const renamingScript = renaming?.kind === 'script' && renaming.id === s.id ? renaming : null;
+                        if (renamingScript) {
+                          return (
+                            <div key={s.id} className="nav-project-item">
+                              <span className="nav-project-icon" aria-hidden="true">{'🎬'}</span>
+                              {renameInput(renamingScript)}
+                            </div>
+                          );
+                        }
                         return (
                           <button
                             key={s.id}
                             type="button"
                             className={`nav-project-item${isOpenScript ? ' current' : ''}`}
                             onClick={() => openScript(project.id, s)}
+                            onContextMenu={(e) => openMenu(e, scriptItems(project.id, s))}
+                            onKeyDown={(e) => { if (e.key === 'F2') { e.preventDefault(); startRename({ kind: 'script', projectId: project.id, id: s.id }, s.title); } }}
                             title={isOpenScript ? t('navigator.projects.openNow') : t('navigator.projects.openScript')}
                           >
                             <span className="nav-project-icon" aria-hidden="true">{'🎬'}</span>
@@ -228,7 +484,7 @@ const NavigatorProjects: React.FC = () => {
 
                       <div className="nav-project-section">{t('navigator.projects.links')}</div>
                       {c.links.map(({ asset, url }) => (
-                        <div key={asset.id} className="nav-project-item nav-project-link">
+                        <div key={asset.id} className="nav-project-item nav-project-link" onContextMenu={(e) => openMenu(e, linkItems(project.id, asset, url))}>
                           <button
                             type="button"
                             className="nav-project-link-open"
@@ -283,7 +539,7 @@ const NavigatorProjects: React.FC = () => {
                         <button
                           type="button"
                           className="nav-project-item nav-project-add"
-                          onClick={() => { setAdding(project.id); setLinkUrl(''); setLinkName(''); }}
+                          onClick={() => startAddLink(project.id)}
                         >
                           <span className="nav-project-icon" aria-hidden="true">+</span>
                           <span className="nav-project-label">{t('navigator.projects.addLink')}</span>
@@ -297,6 +553,7 @@ const NavigatorProjects: React.FC = () => {
                           type="button"
                           className="nav-project-item"
                           onClick={() => openProjectPage(project.id)}
+                          onContextMenu={(e) => openMenu(e, [{ label: L('openProject'), onSelect: () => openProjectPage(project.id) }])}
                           title={t('navigator.projects.openProject')}
                         >
                           <span className="nav-project-icon" aria-hidden="true">{f.mime_type?.startsWith('image/') ? '🖼' : '📎'}</span>
@@ -315,6 +572,7 @@ const NavigatorProjects: React.FC = () => {
           );
         })}
       </div>
+      {menu && <NavContextMenu menu={menu} onClose={() => setMenu(null)} />}
     </>
   );
 };

@@ -140,3 +140,46 @@ describe('Manage Projects › Assets takes Google Doc links too', () => {
     expect(am).toMatch(/if \(url\) openLinkInNewTab\(url\)/);
   });
 });
+
+describe('Navigator › Projects right-click menus (what Manage Projects can do)', () => {
+  const tab = src('../components/NavigatorProjects.tsx');
+  const menu = src('../components/NavContextMenu.tsx');
+  const items = (fn: string) => tab.slice(tab.indexOf(`const ${fn} = (`), tab.indexOf('];', tab.indexOf(`const ${fn} = (`)));
+
+  it('a project offers open, new script, add Google Doc, rename, pin, colour, new project and delete', () => {
+    const p = items('projectItems');
+    for (const k of ['openProject', 'newScript', 'addLink', 'rename', 'pin', 'unpin', 'color', 'newProject', 'deleteProject']) expect(p).toContain(`L('${k}')`);
+    expect(p).toMatch(/L\('deleteProject'\), danger: true/);
+  });
+  it('a script offers open, rename, duplicate and delete; a link open, copy and remove; empty space new project, Manage Projects, refresh', () => {
+    const s = items('scriptItems');
+    for (const k of ['open', 'rename', 'duplicate', 'deleteScript']) expect(s).toContain(`L('${k}')`);
+    const l = items('linkItems');
+    for (const k of ['openLink', 'copyLink', 'removeLink']) expect(l).toContain(`L('${k}')`);
+    const b = items('backgroundItems');
+    for (const k of ['newProject', 'manage', 'refresh']) expect(b).toContain(`L('${k}')`);
+  });
+  it('the actions go through the same api calls as Manage Projects', () => {
+    for (const call of ['api.createProject(name)', 'api.updateProject(project.id, patch)', 'api.deleteProject(project.id)',
+      'api.createScript(projectId', 'api.saveScript(projectId, scriptId, { title })', 'api.duplicateScript(projectId, script.id)',
+      'api.deleteScript(projectId, script.id)']) expect(tab).toContain(call);
+  });
+  it('deleting always asks first, and leaves the editor before deleting what is open', () => {
+    expect(tab).toMatch(/if \(!window\.confirm\(question\)\) return;[\s\S]{0,200}if \(currentProject\?\.id === project\.id\) await leaveEditor\(\(\) => navigate\('\/projects'\)\);\s*await api\.deleteProject/);
+    expect(tab).toMatch(/deleteScriptConfirm[\s\S]{0,300}await leaveEditor\(\(\) => navigate\(`\/project\/\$\{projectId\}`[\s\S]{0,120}await api\.deleteScript/);
+  });
+  it('uses Manage Projects\' own colours, and a new script starts as an empty screenplay', async () => {
+    const { PROJECT_COLORS, EMPTY_SCREENPLAY } = await import('./projectRoutes');
+    const list = src('../components/ProjectList.tsx');
+    for (const c of PROJECT_COLORS.filter(Boolean)) expect(list).toContain(`'${c}'`);
+    const { fountainToNodes } = await import('../addons/script-assistant/scriptEdits');
+    expect(EMPTY_SCREENPLAY.content[0].type).toBe(fountainToNodes('INT. A - DAY')[0].type);
+  });
+  it('the menu is the app\'s context-menu look, closes on Escape or a click elsewhere, and works from the keyboard', () => {
+    expect(menu).toMatch(/className="script-context-menu nav-context-menu" role="menu"/);
+    expect(menu).toMatch(/if \(e\.key === 'Escape'\)/);
+    expect(menu).toMatch(/document\.addEventListener\('mousedown', down, true\)/);
+    expect(menu).toMatch(/e\.key !== 'ArrowDown' && e\.key !== 'ArrowUp'/);
+    expect(tab).toMatch(/e\.key === 'ContextMenu' \|\| \(e\.shiftKey && e\.key === 'F10'\)/);
+  });
+});

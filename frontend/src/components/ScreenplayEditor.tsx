@@ -1,6 +1,7 @@
 import { readSourceFidelity } from '../utils/sourceFidelity';
 import React, { useEffect, useLayoutEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { panelResize } from '../utils/panelResize';
+import { NAV_FALLBACK, NAV_MAX, NAV_MIN, clampPanelWidth, loadPanelWidth, navigatorWidthForAllTabs, savePanelWidth } from '../utils/panelWidths';
 import { ModalOverlay } from './ModalOverlay';
 import { useTranslation, Trans } from 'react-i18next';
 import { t as tg } from '../i18n';
@@ -624,8 +625,11 @@ const ScreenplayEditor: React.FC = () => {
   }, []);
 
   // ── Panel resize state ──
-  const [navWidth, setNavWidth] = useState(240);
-  const [rightPanelWidth, setRightPanelWidth] = useState(300);
+  // Kept on this device as the writer leaves them (utils/panelWidths.ts); a
+  // Navigator never resized opens wide enough to show every tab.
+  const [navWidth, setNavWidth] = useState(() => loadPanelWidth('left') ?? NAV_FALLBACK);
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth('right') ?? 300);
+  const navWidthSetByWriter = useRef(loadPanelWidth('left') !== null);
 
   const resizingRef = useRef<'left' | 'right' | null>(null);
   const resizeStartXRef = useRef(0);
@@ -640,9 +644,14 @@ const ScreenplayEditor: React.FC = () => {
     const handlePointerMove = (ev: PointerEvent) => {
       const delta = ev.clientX - resizeStartXRef.current;
       if (resizingRef.current === 'left') {
-        setNavWidth(Math.max(160, Math.min(500, resizeStartWidthRef.current + delta)));
+        const w = clampPanelWidth('left', resizeStartWidthRef.current + delta);
+        navWidthSetByWriter.current = true;
+        setNavWidth(w);
+        savePanelWidth('left', w);
       } else {
-        setRightPanelWidth(Math.max(200, Math.min(600, resizeStartWidthRef.current - delta)));
+        const w = clampPanelWidth('right', resizeStartWidthRef.current - delta);
+        setRightPanelWidth(w);
+        savePanelWidth('right', w);
       }
     };
 
@@ -669,6 +678,17 @@ const ScreenplayEditor: React.FC = () => {
   ).dockNavigator;
   const foldNavigationClass = foldOpen ? (foldNavigatorDocked ? ' fold-nav-docked' : ' fold-nav-overlay') : '';
   const effectiveNavWidth = foldOpen ? (foldNavigatorDocked ? FOLD_NAV_WIDTH : 300) : navWidth;
+  // Until the writer sets a width, open the Navigator wide enough for all of
+  // its tabs (Scenes … Projects), measured once it is on screen.
+  const navAutoFitted = useRef(false);
+  useLayoutEffect(() => {
+    if (!navigatorOpen) { navAutoFitted.current = false; return; }
+    if (navAutoFitted.current || navWidthSetByWriter.current || foldOpen) return;
+    const fit = navigatorWidthForAllTabs(document.querySelector('.scene-navigator'));
+    if (!fit) return;
+    navAutoFitted.current = true;
+    if (fit > navWidth) setNavWidth(fit);
+  }, [navigatorOpen, foldOpen, navWidth]);
   // The saved drag width must not override the fixed foldable column width,
   // including the min-width and the floating menu's positioning hint.
   useEffect(() => {
@@ -5866,10 +5886,10 @@ const ScreenplayEditor: React.FC = () => {
         {!isHistoryMode && <SceneNavigator editor={editor} scrollContainer={editorMainEl} style={navStyle} />}
         {!isHistoryMode && navigatorOpen && (
           <div className="panel-resize-handle" role="separator" aria-orientation="vertical" tabIndex={0}
-            aria-label={tg('menu:pluginPanels.resize')} aria-valuenow={navWidth} aria-valuemin={160} aria-valuemax={500}
+            aria-label={tg('menu:pluginPanels.resize')} aria-valuenow={navWidth} aria-valuemin={NAV_MIN} aria-valuemax={NAV_MAX}
             onKeyDown={event => {
               const next = panelResize(navWidth, event.key, 'left', getComputedStyle(event.currentTarget).direction === 'rtl');
-              if (next !== null) { event.preventDefault(); setNavWidth(next); }
+              if (next !== null) { event.preventDefault(); navWidthSetByWriter.current = true; setNavWidth(next); savePanelWidth('left', next); }
             }}
             onPointerDown={(e) => handleResizePointerDown('left', e)} style={{ touchAction: 'none' }} />
         )}
@@ -6118,7 +6138,7 @@ const ScreenplayEditor: React.FC = () => {
             aria-label={tg('menu:pluginPanels.resize')} aria-valuenow={rightPanelWidth} aria-valuemin={200} aria-valuemax={600}
             onKeyDown={event => {
               const next = panelResize(rightPanelWidth, event.key, 'right', getComputedStyle(event.currentTarget).direction === 'rtl');
-              if (next !== null) { event.preventDefault(); setRightPanelWidth(Math.max(200, Math.min(600, next))); }
+              if (next !== null) { event.preventDefault(); const w = clampPanelWidth('right', next); setRightPanelWidth(w); savePanelWidth('right', w); }
             }}
             onPointerDown={(e) => handleResizePointerDown('right', e)} style={{ touchAction: 'none' }} />
         )}

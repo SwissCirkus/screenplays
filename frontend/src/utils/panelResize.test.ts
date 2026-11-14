@@ -7,13 +7,13 @@ describe('keyboard sidebar resizing', () => {
     ['right', false, 'ArrowRight', 290], ['right', false, 'ArrowLeft', 310],
     ['left', true, 'ArrowRight', 290], ['left', true, 'ArrowLeft', 310],
     ['right', true, 'ArrowRight', 310], ['right', true, 'ArrowLeft', 290],
-    ['left', false, 'Home', 160], ['left', false, 'End', 500],
+    ['left', false, 'Home', 160], ['left', false, 'End', 640],
     ['right', false, 'Home', 200], ['right', false, 'End', 600],
   ] as const)('%s RTL=%s %s moves the inner edge', (side, rtl, key, expected) => {
     expect(panelResize(300, key, side, rtl)).toBe(expected);
   });
   it('clamps at the same limits as pointer resizing and leaves other keys alone', () => {
-    expect(panelResize(500, 'ArrowRight', 'left')).toBe(500);
+    expect(panelResize(640, 'ArrowRight', 'left')).toBe(640); // 640: room for every Navigator tab (utils/panelWidths.ts)
     expect(panelResize(200, 'ArrowRight', 'right')).toBe(200);
     expect(panelResize(300, 'Tab', 'right')).toBeNull();
     expect(panelResize(300, 'ArrowDown', 'left')).toBeNull();
