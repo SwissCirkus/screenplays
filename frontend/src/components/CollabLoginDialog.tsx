@@ -203,11 +203,9 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const finishGoogleLogin = async (idToken: string) => {
     setLoading(true);
     try {
-      await loadGoogleScript();
-      const idToken = await getGoogleIdToken(serverConfig?.googleClientId || '');
       const response = await collabAuthApi.loginWithGoogle(idToken);
       handleAuthResponse(response);
       showToast(t('login.toast.googleSignedIn'), 'success');
@@ -218,6 +216,46 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
       setLoading(false);
     }
   };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      await loadGoogleScript();
+      const idToken = await getGoogleIdToken(serverConfig?.googleClientId || '');
+      setLoading(false);
+      await finishGoogleLogin(idToken);
+    } catch (err: any) {
+      showToast(err.message || t('login.toast.googleFailed'), 'error');
+      setLoading(false);
+    }
+  };
+
+  // SwissCirkus fork: with a known client id, Google's own Sign in with Google button (a popup window). The One Tap
+  // prompt behind handleGoogleLogin is skipped by current Chrome and by Kontroll's web tabs ("skipped, unknown_reason"),
+  // which read as "cancelled" and never reached the server.
+  const googleButtonRef = React.useRef<HTMLDivElement>(null);
+  const googleClientId = serverConfig?.googleClientId || '';
+  useEffect(() => {
+    if (!googleClientId || !serverConfig?.googleEnabled) return;
+    let cancelled = false;
+    loadGoogleScript().then(() => {
+      const g = (window as any).google;
+      const el = googleButtonRef.current;
+      if (cancelled || !el || !g?.accounts?.id) return;
+      g.accounts.id.initialize({
+        client_id: googleClientId,
+        ux_mode: 'popup',
+        callback: (response: any) => {
+          if (response?.credential) void finishGoogleLogin(response.credential);
+          else showToast(t('login.toast.googleFailed'), 'error');
+        },
+      });
+      el.innerHTML = '';
+      g.accounts.id.renderButton(el, { type: 'standard', theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'rectangular', width: 300 });
+    }).catch((err: any) => { if (!cancelled) showToast(err?.message || t('login.toast.googleFailed'), 'error'); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleClientId, serverConfig?.googleEnabled]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -531,6 +569,12 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
           {serverConfig?.googleEnabled && (
             <div className="settings-google-section">
               {!googleOnly && <div className="settings-divider"><span>{t('login.or')}</span></div>}
+              {googleClientId ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  <div ref={googleButtonRef} style={{ minHeight: 44, opacity: loading ? 0.5 : 1, pointerEvents: loading ? 'none' : undefined }} />
+                  {loading && <span style={{ fontSize: 12, color: 'var(--fd-text-muted)' }}>{t('login.signingIn')}</span>}
+                </div>
+              ) : (
               <button
                 className="dialog-btn settings-google-btn"
                 onClick={handleGoogleLogin}
@@ -544,6 +588,7 @@ const CollabLoginDialog: React.FC<CollabLoginDialogProps> = ({ onClose, onSucces
                 </svg>
                 {loading ? t('login.signingIn') : t('login.signInWithGoogle')}
               </button>
+              )}
             </div>
           )}
         </div>
