@@ -209,3 +209,17 @@ describe('Google Drive mirror (driveSync)', () => {
     expect(JSON.parse((await drive.text('S.screenplay.json'))!).content).toEqual(doc('y'));
   });
 });
+
+describe('imported originals', () => {
+  it("a script's original file goes to the project's Original folder; other files to assets", async () => {
+    const drive = fakeDrive();
+    const a = device(drive);
+    await a.sync.connect();
+    const p = await a.lib.createProject('Charlotte');
+    await a.lib.uploadAsset(p.id, new File([new Uint8Array([1])], 'Charlotte Draft 3.fdx'), ['original']);
+    await a.lib.uploadAsset(p.id, new File([new Uint8Array([2])], 'moodboard.jpg', { type: 'image/jpeg' }));
+    await a.sync.flush();
+    expect(drive.paths()).toContain('Screenplays/Charlotte/Original/Charlotte Draft 3.fdx');
+    expect(drive.paths()).toContain('Screenplays/Charlotte/assets/moodboard.jpg');
+  });
+});

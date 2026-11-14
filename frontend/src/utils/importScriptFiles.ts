@@ -21,6 +21,8 @@ import {
 /** The part of `api` / `cloudApi` an import writes through. */
 export interface ImportScriptClient {
   createScript: (projectId: string, data: { title: string; content?: unknown }) => Promise<ScriptResponse>;
+  /** SwissCirkus: keeps the imported file itself with the project (tag 'original' → Drive's Original folder). */
+  uploadAsset?: (projectId: string, file: File, tags?: string[]) => Promise<unknown>;
 }
 
 export type ParseImport = (
@@ -66,6 +68,9 @@ export async function importScriptFiles(
         content: { ...(imported.doc as Record<string, unknown>), ...(imported.metadata ?? {}), _sceneHeadingSpaceBefore: null },
       });
       result.created.push({ id: resp.meta.id, title });
+      if (client.uploadAsset) {
+        try { await client.uploadAsset(projectId, file, ['original']); } catch (err) { console.warn('Original file not kept:', file.name, err); }
+      }
     } catch (err) {
       if (isImportCancelled(err)) {
         result.skipped++;

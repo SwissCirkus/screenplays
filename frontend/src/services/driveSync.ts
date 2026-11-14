@@ -231,11 +231,13 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
   async function projectFolder(pid: string, name: string): Promise<string> {
     return put(`folder|${pid}`, { sp: 'project', spId: pid }, await rootFolder(), safeName(name, 'Project'), undefined, undefined, true);
   }
-  async function subFolder(kind: 'versions' | 'assets', pid: string, projectName: string): Promise<string> {
+  async function subFolder(kind: 'versions' | 'assets' | 'original', pid: string, projectName: string): Promise<string> {
     const key = `${kind}|${pid}`;
     const existing = await locate(key, { sp: kind, spId: pid });
     if (existing) return existing;
-    return put(key, { sp: kind, spId: pid }, await projectFolder(pid, projectName), kind, undefined, undefined, true);
+    // The imported originals' folder reads "Original" (Christian 2026-11-14: "keep the original script … in a subfolder called original").
+    const folderName = kind === 'original' ? 'Original' : kind;
+    return put(key, { sp: kind, spId: pid }, await projectFolder(pid, projectName), folderName, undefined, undefined, true);
   }
 
   // ── Pushing one unit ──
@@ -283,7 +285,8 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
     const rec = await kv.get<ProjectRecord>(keys.project(pid));
     const a = await kv.get<AssetRecord>(keys.asset(pid, aid));
     if (!rec || !a) return;
-    const folder = await subFolder('assets', pid, rec.info.name);
+    // A script's original file (tagged 'original' at import) goes to the project's Original folder; other files to assets.
+    const folder = await subFolder((a.meta.tags || []).includes('original') ? 'original' : 'assets', pid, rec.info.name);
     await put(`asset|${aid}`, { sp: 'asset', spId: aid, spProject: pid }, folder, safeName(a.meta.original_name, a.meta.filename), a.blob, a.meta.mime_type);
   }
 

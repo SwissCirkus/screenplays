@@ -149,3 +149,53 @@ describe('bulk import: no Reformat question', () => {
     expect(predatesStandardSceneSpacing({ type: 'doc', content: [], _revisionMode: true })).toBe(true);
   });
 });
+
+describe('bulk import: your folders, where they make sense', () => {
+  it('dropping one parent folder is the same as dropping its folders', async () => {
+    const { projectFolders } = await import('./bulkImport');
+    const m = projectFolders([
+      cand('f1', 'A', { folder: 'Scripts/Charlotte' }), cand('f2', 'B', { folder: 'Scripts/Goldpaw/old drafts' }), cand('f3', 'C', { folder: 'Scripts/Goldpaw' }),
+    ]);
+    expect([...m.values()]).toEqual(['Charlotte', 'Goldpaw', 'Goldpaw']);
+    // one folder dropped on its own: it is the project
+    expect([...projectFolders([cand('f1', 'A', { folder: 'Charlotte' }), cand('f2', 'B', { folder: 'Charlotte' })]).values()]).toEqual(['Charlotte', 'Charlotte']);
+  });
+
+  it('a folder of one script\'s drafts is a project; a folder that mixes scripts is split by title; loose files by title', async () => {
+    const { planByFolderWhereSensible } = await import('./bulkImport');
+    const r = planByFolderWhereSensible([
+      cand('f1', 'GOLDPAW Draft 2', { folder: 'Desk/My Goldpaw' }), cand('f2', 'Goldpaw v5', { folder: 'Desk/My Goldpaw' }),
+      cand('f3', 'Under The Bed', { folder: 'Desk/Misc' }), cand('f4', 'Brain Power', { folder: 'Desk/Misc' }),
+      cand('f5', 'Oil On Canvas'),
+    ]);
+    expect(r.plan.map((p) => [p.name, p.fileIds])).toEqual([
+      ['My Goldpaw', ['f1', 'f2']], ['Under The Bed', ['f3']], ['Brain Power', ['f4']], ['Oil On Canvas', ['f5']],
+    ]);
+    expect([r.foldersUsed, r.foldersSplit]).toEqual([1, 1]);
+  });
+
+  it('two folders of the same script, or a loose draft of a folder\'s script, become one project', async () => {
+    const { planByFolderWhereSensible } = await import('./bulkImport');
+    const r = planByFolderWhereSensible([
+      cand('f1', 'Charlotte', { folder: 'Charlotte' }), cand('f2', 'Charlotte Screenplay', { folder: 'Charlotte Screenplay' }),
+      cand('f3', 'Charlotte draft 9'),
+    ]);
+    expect(r.plan).toEqual([{ name: 'Charlotte', fileIds: ['f1', 'f2', 'f3'] }]);
+  });
+});
+
+describe('bulk import: originals kept', () => {
+  it('each imported script keeps its original file, tagged original; a failed upload never undoes the script', async () => {
+    const { buildProjects } = await import('./bulkImport');
+    const kept: Array<[string, string, string[] | undefined]> = [];
+    const client = {
+      createProject: async (name: string) => ({ id: 'p1', name }) as never,
+      createScript: async () => ({ meta: { id: 's' }, content: null }) as never,
+      uploadAsset: async (pid: string, f: File, tags?: string[]) => { kept.push([pid, f.name, tags]); if (f.name.startsWith('B')) throw new Error('quota'); },
+    };
+    const r = await buildProjects([{ name: 'X', fileIds: ['f1', 'f2'] }], [cand('f1', 'A', { name: 'A.fdx' }), cand('f2', 'B', { name: 'B.pdf', file: file('B.pdf') })], client);
+    expect(kept.map((k) => [k[0], k[2]])).toEqual([['p1', ['original']], ['p1', ['original']]]);
+    expect(r.projects[0].scripts).toBe(2);
+    expect(r.failed).toEqual([]);
+  });
+});

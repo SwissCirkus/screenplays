@@ -200,13 +200,75 @@ function prettyName(title: string): string {
 /** "As they are": each dropped folder (its top level) becomes a project; loose files go into `looseName`. */
 export function planByFolder(cands: Candidate[], looseName: string): PlannedProject[] {
   const by = new Map<string, string[]>();
+  const folderOf = projectFolders(cands);
   for (const c of cands) {
     if (c.error) continue;
-    const top = c.folder.split('/')[0] || '';
-    const name = top || looseName;
+    const name = folderOf.get(c.id) || looseName;
     by.set(name, [...(by.get(name) || []), c.id]);
   }
   return [...by.entries()].map(([name, fileIds]) => ({ name, fileIds }));
+}
+
+/**
+ * The folder that stands for each file's project. Dropping one parent folder ("Scripts", holding "Charlotte/" and
+ * "Goldpaw/") is the same as dropping its folders: the path every file shares is skipped, and the next folder down is the
+ * project. Deeper folders ("Goldpaw/old drafts") stay inside their project. '' = a loose file.
+ */
+export function projectFolders(cands: Candidate[]): Map<string, string> {
+  const ok = cands.filter((c) => !c.error);
+  const parts = ok.map((c) => (c.folder ? c.folder.split('/').filter(Boolean) : []));
+  // The shared leading path — but never so deep that a file's own folder is swallowed when the files are spread out.
+  // Only the files inside folders decide it: loose files dropped alongside don't stop "Desk/" being skipped.
+  const inFolders = parts.filter((p) => p.length > 0);
+  let common = 0;
+  if (inFolders.length) {
+    const first = inFolders[0];
+    while (common < first.length && inFolders.every((p) => p.length > common + 1 && p[common] === first[common])) common += 1;
+  }
+  const out = new Map<string, string>();
+  ok.forEach((c, i) => { out.set(c.id, parts[i].length ? parts[i][common] || '' : ''); });
+  return out;
+}
+
+/**
+ * "Use my folders where they make sense" (Christian 2026-11-14: "if the folders seem to make sense, it should look at
+ * that first and then adopt that as a structure"). Each folder that holds drafts of ONE script becomes a project (named
+ * after the folder); a folder that mixes different scripts is split by title; loose files are grouped by title. Two
+ * folders holding the same script become one project.
+ */
+export function planByFolderWhereSensible(cands: Candidate[]): { plan: PlannedProject[]; foldersUsed: number; foldersSplit: number } {
+  const folderOf = projectFolders(cands);
+  const byFolder = new Map<string, Candidate[]>();
+  const loose: Candidate[] = [];
+  for (const c of cands) {
+    if (c.error) continue;
+    const f = folderOf.get(c.id) || '';
+    if (!f) { loose.push(c); continue; }
+    byFolder.set(f, [...(byFolder.get(f) || []), c]);
+  }
+  const plan: PlannedProject[] = [];
+  let foldersUsed = 0, foldersSplit = 0;
+  for (const [folder, files] of byFolder) {
+    const groups = planByTitle(files);
+    // One script — or one clear main script with a stray or two (notes, a treatment) — is a project.
+    const biggest = Math.max(...groups.map((g) => g.fileIds.length));
+    const coherent = groups.length === 1 || (biggest >= 2 && biggest / files.length >= 0.6);
+    if (coherent) { plan.push({ name: folder, fileIds: files.map((c) => c.id) }); foldersUsed += 1; }
+    else { plan.push(...groups); foldersSplit += 1; }
+  }
+  plan.push(...planByTitle(loose));
+  // The same script in two folders, or a loose draft of a script that has a folder: one project.
+  const keyOf = (p: PlannedProject) => {
+    const first = cands.find((c) => c.id === p.fileIds[0]);
+    return scriptKey(first ? first.title : p.name) || scriptKey(p.name);
+  };
+  const merged: PlannedProject[] = [];
+  for (const p of plan) {
+    const twin = merged.find((q) => keyOf(q) && keyOf(q) === keyOf(p));
+    if (twin) twin.fileIds.push(...p.fileIds);
+    else merged.push({ ...p, fileIds: [...p.fileIds] });
+  }
+  return { plan: mergeSameNames(merged), foldersUsed, foldersSplit };
 }
 
 /** The quick guess: drafts of the same script (same title once draft/revision/date marks are off) = one project. */
@@ -227,7 +289,8 @@ export const ORGANISE_SYSTEM = [
   'revision, polish, rewrite and copy of the same script belongs together, even when the title changed a little or the',
   'file name is messy. Different stories go into different projects. Episodes of one series go together only when the',
   'files clearly say they are the same series. Use the title, the title page (author, draft), the first scene, the main',
-  'characters and the folder to decide. Name each project after the script (its best title, in normal title case — no',
+  'characters and the folder to decide. Folders the writer made usually ARE projects: keep a folder together as one',
+  'project (named after the folder) unless it clearly mixes different scripts. Name each project after the script (its best title, in normal title case — no',
   'draft numbers or dates). Every file id must appear in exactly one project. Answer with JSON only, no prose:',
   '{"projects":[{"name":"…","files":["f1","f3"],"why":"one short reason"}]}',
 ].join(' ');
@@ -306,7 +369,12 @@ export function importedContent(doc: unknown, metadata?: Record<string, unknown>
 export interface BuildClient {
   createProject: (name: string) => Promise<ProjectInfo>;
   createScript: (projectId: string, data: { title: string; content?: unknown }) => Promise<ScriptResponse>;
+  /** Keeps the imported file itself with the project (tag 'original' → Drive's Original folder). Optional. */
+  uploadAsset?: (projectId: string, file: File, tags?: string[]) => Promise<unknown>;
 }
+
+/** The tag an imported script's original file carries; Drive files it in the project's Original folder. */
+export const ORIGINAL_TAG = 'original';
 
 export interface BuildResult {
   projects: Array<{ id: string; name: string; created: boolean; scripts: number }>;
@@ -344,6 +412,10 @@ export async function buildProjects(
       try {
         await client.createScript(projectId, { title, content: importedContent(c.doc, c.metadata) });
         made += 1;
+        // The original file (.fdx, .pdf, .docx …) is kept beside the converted script — a failure here never undoes the script.
+        if (client.uploadAsset) {
+          try { await client.uploadAsset(projectId, c.file, [ORIGINAL_TAG]); } catch (err) { console.warn('[bulk import] original not kept', c.name, err); }
+        }
       } catch (err) {
         result.failed.push({ name: c.name, error: err instanceof Error ? err.message : String(err) });
       }

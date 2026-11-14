@@ -2,7 +2,7 @@
  * Bring in many scripts at once — the drop box on the Projects page (SwissCirkus fork, Christian 2026-11-14).
  *
  * Drop scripts or whole folders (or choose them). Every file is read once, then a plan shows which project each one goes
- * into, three ways to make it — As they are (folders → projects), By title (drafts of one script together) and Smart
+ * into, three ways to make it — Your folders (each folder of one script's drafts → a project), By title (drafts of one script together) and Smart
  * organise (Kontroll's assistant reads the scripts and groups them) — and every project name and file can still be
  * changed. Build makes the projects and their scripts; the library mirrors them to Google Drive by itself.
  * Logic in utils/bulkImport.ts.
@@ -14,7 +14,7 @@ import { inKontroll, kontrollAi, useKontrollBridge } from '../services/kontrollB
 import { importAccept } from '../utils/importScreenplay';
 import {
   ORGANISE_SYSTEM, buildOrganisePrompt, buildProjects, collectDropped, importableOnly, matchExisting, mergeSameNames,
-  parseOrganiseReply, planByFolder, planByTitle, readCandidates,
+  parseOrganiseReply, planByFolderWhereSensible, planByTitle, readCandidates,
   type BuildResult, type Candidate, type DroppedFile, type PlannedProject,
 } from '../utils/bulkImport';
 import { showToast } from './Toast';
@@ -30,7 +30,6 @@ type Stage =
   | { kind: 'building'; done: number; total: number }
   | { kind: 'done'; result: BuildResult };
 
-const LOOSE_NAME = 'Imported scripts'; // i18n-ignore: default project name
 const DRAG_FILE = 'application/x-screenplays-import-file';
 
 interface Props {
@@ -59,6 +58,16 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
   const placed = plan.reduce((n, p) => n + p.fileIds.length, 0);
 
   const usePlan = (p: PlannedProject[]) => setPlan(matchExisting(mergeSameNames(p), projects));
+  // Your folders, where they make sense (each folder of one script's drafts = a project; a mixed folder is split by title).
+  const useFolders = (list: Candidate[]) => {
+    const r = planByFolderWhereSensible(list);
+    usePlan(r.plan);
+    const bits = [
+      r.foldersUsed ? `kept ${r.foldersUsed} of your folder${r.foldersUsed === 1 ? '' : 's'} as projects` : '',
+      r.foldersSplit ? `split ${r.foldersSplit} folder${r.foldersSplit === 1 ? '' : 's'} that mixed different scripts` : '',
+    ].filter(Boolean);
+    setSmartNote(bits.length ? `Your folders: ${bits.join('; ')}.` : ''); // i18n-ignore
+  };
 
   const start = async (dropped: DroppedFile[]) => {
     const { files, ignored: skipped } = importableOnly(dropped);
@@ -74,7 +83,7 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
     const first: Mode = anyFolders ? 'folders' : 'title';
     setMode(first);
     setSmartNote('');
-    usePlan(first === 'folders' ? planByFolder(read, LOOSE_NAME) : planByTitle(read));
+    if (first === 'folders') useFolders(read); else usePlan(planByTitle(read));
     setStage({ kind: 'plan' });
   };
 
@@ -90,7 +99,7 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
   const chooseMode = async (m: Mode) => {
     setMode(m);
     setSmartNote('');
-    if (m === 'folders') { usePlan(planByFolder(cands, LOOSE_NAME)); return; }
+    if (m === 'folders') { useFolders(cands); return; }
     if (m === 'title') { usePlan(planByTitle(cands)); return; }
     if (!inKontroll()) {
       setSmartNote('Smart organise uses Kontroll\'s assistant — open the writer in Kontroll\'s Screenplay tab. Grouped by title instead.'); // i18n-ignore
@@ -235,7 +244,7 @@ const BulkImportBox: React.FC<Props> = ({ projects, onBuilt, onOpenProject }) =>
 
       <div className="bulk-modes" role="radiogroup" aria-label="How to file them">{/* i18n-ignore */}
         <button type="button" role="radio" aria-checked={mode === 'folders'} className={`bulk-mode${mode === 'folders' ? ' on' : ''}`} disabled={building || thinking} onClick={() => void chooseMode('folders')}
-          title="Each folder you dropped becomes a project; loose files go into one project">As they are{/* i18n-ignore */}</button>
+          title="Your folders become projects where they hold one script's drafts; a folder that mixes scripts is split by title; loose files are grouped by title">Your folders{/* i18n-ignore */}</button>
         <button type="button" role="radio" aria-checked={mode === 'title'} className={`bulk-mode${mode === 'title' ? ' on' : ''}`} disabled={building || thinking} onClick={() => void chooseMode('title')}
           title="Drafts of the same script (same title once draft numbers, dates and copies are ignored) go into one project">By title{/* i18n-ignore */}</button>
         <button type="button" role="radio" aria-checked={mode === 'smart'} className={`bulk-mode${mode === 'smart' ? ' on' : ''}`} disabled={building || thinking} onClick={() => void chooseMode('smart')}
