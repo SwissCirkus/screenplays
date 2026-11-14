@@ -223,3 +223,32 @@ describe('imported originals', () => {
     expect(drive.paths()).toContain('Screenplays/Charlotte/assets/moodboard.jpg');
   });
 });
+
+describe('fast loading from Drive', () => {
+  it('a second browser brings everything in with a handful of searches, not one per script, and shows progress', async () => {
+    const drive = fakeDrive();
+    const a = device(drive);
+    await a.sync.connect();
+    for (let p = 0; p < 3; p++) {
+      const proj = await a.lib.createProject(`Film ${p}`);
+      for (let s = 0; s < 6; s++) await a.lib.createScript(proj.id, { title: `Draft ${s}`, content: doc(`p${p}s${s}`) });
+      await a.lib.uploadAsset(proj.id, new File([new Uint8Array([p])], `orig${p}.fdx`), ['original']);
+    }
+    await a.sync.flush();
+
+    let finds = 0;
+    const counting = { ...drive.t, find: (props: Record<string, string>, parent?: string) => { finds++; return drive.t.find(props, parent); } };
+    const kv = createMemoryKv();
+    let shown = 0;
+    const sync = createDriveSync(kv, counting, { debounceMs: 0, onPulled: () => { shown++; } });
+    const lib = createWebStorage(kv, { onChange: (u) => sync.markDirty(u) });
+    await sync.connect();
+    expect((await lib.listProjects()).length).toBe(3);
+    for (const p of await lib.listProjects()) {
+      expect((await lib.listScripts(p.id)).length).toBe(6);
+      expect((await lib.listAssets(p.id)).length).toBe(1);
+    }
+    expect(finds).toBeLessThanOrEqual(8); // root + 4 kinds + templates — was 1 + 18 scripts + 3 versions + 3 assets
+    expect(shown).toBeGreaterThan(0);
+  });
+});

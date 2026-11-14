@@ -323,12 +323,48 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
   }
 
   /** Bring in anything newer on Drive. Returns how many items changed here. */
+  /** Run `work` over `items`, `limit` at a time (Drive answers several requests at once happily). */
+  async function inParallel<T>(items: T[], limit: number, work: (item: T) => Promise<void>): Promise<void> {
+    let next = 0;
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) { const item = items[next++]; await work(item); }
+    });
+    await Promise.all(runners);
+  }
+
+  /**
+   * Bring in anything newer on Drive. Returns how many items changed here.
+   *
+   * Fast (Christian 2026-11-14: "it's very slow … shouldn't that be instant?"): four searches find every project, script,
+   * version and asset file at once (no search per file); downloads run six at a time; projects and scripts come first
+   * and show as they arrive (onPulled while it runs); the imported originals and other assets follow last.
+   */
   async function pull(): Promise<number> {
     let changedCount = 0;
     const pending = new Set((await dirtyList()).map((k) => k.replace(/^-/, '')));
-    for (const f of await transport.find({ sp: 'projectjson' })) {
+    const byId = (files: DriveFile[]) => {
+      const m = new Map<string, DriveFile>();
+      for (const f of files) { const id = f.appProperties?.spId; if (id && !m.has(id)) m.set(id, f); }
+      return m;
+    };
+    const [projectFiles, scriptFiles, versionFiles, assetFiles] = await Promise.all([
+      transport.find({ sp: 'projectjson' }), transport.find({ sp: 'script' }),
+      transport.find({ sp: 'version' }), transport.find({ sp: 'asset' }),
+    ]);
+    const scripts = byId(scriptFiles), assets = byId(assetFiles);
+
+    // Show what has arrived every second or so, not only at the end.
+    let lastShown = 0, shownCount = 0;
+    const showProgress = (force = false) => {
+      if (changedCount === shownCount || (!force && Date.now() - lastShown < 1000)) return;
+      lastShown = Date.now(); shownCount = changedCount;
+      try { opts.onPulled?.(); } catch { /* the list refreshes on the next one */ }
+    };
+
+    const assetJobs: Array<{ pid: string; meta: AssetMeta; file: DriveFile }> = [];
+    await inParallel(projectFiles, 4, async (f) => {
       const remote = await readJson<ProjectFile>(f.id);
-      if (!remote?.info?.id) continue;
+      if (!remote?.info?.id) return;
       const pid = remote.info.id;
       await remember(`projectjson|${pid}`, f.id);
       if (f.parents?.[0]) await remember(`folder|${pid}`, f.parents[0]);
@@ -339,21 +375,26 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
         changedCount++;
       }
 
-      // Scripts: newer copy wins, script by script.
-      const remoteIds = new Set<string>();
+      // Scripts: newer copy wins, script by script — six downloads at a time.
+      const remoteIds = new Set<string>((remote.scripts ?? []).map((m) => m.id));
+      const wanted: ScriptMeta[] = [];
       for (const meta of remote.scripts ?? []) {
-        remoteIds.add(meta.id);
         if (pending.has(`script|${pid}|${meta.id}`)) continue;
         const mine = await kv.get<ScriptMeta>(keys.script(pid, meta.id));
         if (mine && mine.updated_at >= meta.updated_at) continue;
-        const sf = await locate(`script|${meta.id}`, { sp: 'script', spId: meta.id });
-        if (!sf) continue;
-        const body = await readJson<{ meta: ScriptMeta; content: unknown }>(sf);
-        if (!body) continue;
+        wanted.push(meta);
+      }
+      await inParallel(wanted, 6, async (meta) => {
+        const sf = scripts.get(meta.id);
+        if (!sf) return;
+        await remember(`script|${meta.id}`, sf.id);
+        const body = await readJson<{ meta: ScriptMeta; content: unknown }>(sf.id);
+        if (!body) return;
         await kv.put(keys.content(meta.id), body.content ?? null);
         await kv.put(keys.script(pid, meta.id), body.meta ?? meta);
         changedCount++;
-      }
+        showProgress();
+      });
       // A script deleted on the other side (only when that side is newer).
       if (remoteNewer && local) {
         for (const k of await kv.keys(keys.scripts(pid))) {
@@ -365,30 +406,35 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
           }
         }
       }
-
-      // Versions: add any this browser hasn't seen.
-      for (const vf of await transport.find({ sp: 'version', spProject: pid })) {
-        const vid = vf.appProperties?.spId;
-        if (!vid || (await kv.get(keys.version(pid, vid)))) continue;
-        const v = await readJson<VersionRecord>(vf.id);
-        if (!v) continue;
-        await kv.put(keys.version(pid, vid), v);
-        await remember(`version|${vid}`, vf.id);
-        changedCount++;
-      }
-
-      // Assets listed in project.json that this browser doesn't have.
+      // Assets this browser doesn't have: fetched after every project's scripts are in.
       for (const am of remote.assets ?? []) {
-        if (await kv.get(keys.asset(pid, am.id))) continue;
-        const af = await locate(`asset|${am.id}`, { sp: 'asset', spId: am.id });
-        if (!af) continue;
-        try {
-          const blob = await transport.download(af);
-          await kv.put(keys.asset(pid, am.id), { meta: am, blob } satisfies AssetRecord);
-          changedCount++;
-        } catch (e) { if (e instanceof DriveAuthError) throw e; console.warn('[drive] asset skipped', am.id, e); }
+        const af = assets.get(am.id);
+        if (af && !(await kv.get(keys.asset(pid, am.id)))) assetJobs.push({ pid, meta: am, file: af });
       }
-    }
+      showProgress();
+    });
+    showProgress(true);
+
+    // Versions: add any this browser hasn't seen.
+    await inParallel(versionFiles, 6, async (vf) => {
+      const vid = vf.appProperties?.spId, pid = vf.appProperties?.spProject;
+      if (!vid || !pid || (await kv.get(keys.version(pid, vid)))) return;
+      const v = await readJson<VersionRecord>(vf.id);
+      if (!v) return;
+      await kv.put(keys.version(pid, vid), v);
+      await remember(`version|${vid}`, vf.id);
+      changedCount++;
+    });
+
+    // The imported originals and other assets, last.
+    await inParallel(assetJobs, 4, async ({ pid, meta, file }) => {
+      try {
+        const blob = await transport.download(file.id);
+        await kv.put(keys.asset(pid, meta.id), { meta, blob } satisfies AssetRecord);
+        await remember(`asset|${meta.id}`, file.id);
+        changedCount++;
+      } catch (e) { if (e instanceof DriveAuthError) throw e; console.warn('[drive] asset skipped', meta.id, e); }
+    });
 
     const tf = await locate('templates', { sp: 'templates' });
     if (tf && !pending.has('templates')) {
