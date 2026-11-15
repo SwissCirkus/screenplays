@@ -21,6 +21,8 @@ import { useProjectStore } from '../stores/projectStore';
 import { leaveEditor, CLOSE_DELETED_DOCUMENT_EVENT } from '../services/pendingSave';
 import { addProjectLink, openLinkInNewTab, readProjectLink, type ProjectAsset } from '../services/projectLinks';
 import { useDocView } from '../stores/docViewStore';
+import { browserLibrary } from '../services/platform';
+import { isUnfiled } from '../services/unfiled';
 import {
   dragMayCarryLink, isLinkAsset, linkDisplayName, linkFromDataTransfer, linkIcon, linkKind, normalizeLinkUrl,
 } from '../utils/linkAssets';
@@ -141,6 +143,20 @@ const NavigatorProjects: React.FC = () => {
     }
   }, [opened, closed, currentProject]);
 
+  // Unfiled — new scripts and Docs, shown at the top without a folder (Christian 2026-11-15). Always loaded.
+  const unfiled = projects?.find(isUnfiled) ?? null;
+  const folders = projects ? projects.filter((p) => !isUnfiled(p)) : null;
+  const unfiledId = unfiled?.id ?? null;
+  const unfiledLoaded = unfiledId ? !!contents[unfiledId] : true;
+  useEffect(() => {
+    if (!unfiledId || unfiledLoaded || requested.current.has(unfiledId)) return;
+    requested.current.add(unfiledId);
+    void (async () => {
+      const c = await loadContents(unfiledId);
+      setContents((prev) => ({ ...prev, [unfiledId]: c }));
+    })();
+  }, [unfiledId, unfiledLoaded]);
+
   const toggle = (projectId: string) => {
     if (!isOpen(projectId)) { openFolder(projectId); return; }
     setClosed((prev) => new Set(prev).add(projectId));
@@ -233,6 +249,21 @@ const NavigatorProjects: React.FC = () => {
     } catch (err) {
       failed(err);
       await reloadProjects();
+    }
+  };
+
+  // Right-click › Remove (keep in Google Drive) — Christian 2026-11-15: out of the writer, its files left in Drive.
+  const removeKeepDrive = async (project: ProjectInfo) => {
+    if (!window.confirm(`Remove “${project.name}” from the writer?
+
+Its folder and files stay in your Google Drive (Screenplays › ${project.name}) — nothing is deleted there. It won't come back here.`)) return; // i18n-ignore: SwissCirkus
+    try {
+      if (currentProject?.id === project.id) await leaveEditor(() => window.dispatchEvent(new Event(CLOSE_DELETED_DOCUMENT_EVENT)));
+      await api.removeProjectKeepDrive(project.id);
+      showToast(`Removed “${project.name}” — its files are still in your Google Drive`, 'success'); // i18n-ignore: SwissCirkus
+      await reloadProjects();
+    } catch (err) {
+      failed(err);
     }
   };
 
@@ -363,6 +394,7 @@ const NavigatorProjects: React.FC = () => {
     { kind: 'colors', label: L('color'), colors: PROJECT_COLORS, current: p.color || '', noColorLabel: L('noColor'), onPick: (color) => { void updateProject(p, { color }); } },
     sep,
     { label: L('newProject'), onSelect: () => setNewProject('') },
+    ...(browserLibrary() ? [{ label: 'Remove (keep in Google Drive)', onSelect: () => { void removeKeepDrive(p); } }] : []), // i18n-ignore: SwissCirkus
     { label: L('deleteProject'), danger: true, onSelect: () => { void deleteProject(p); } },
   ];
 
@@ -437,6 +469,30 @@ const NavigatorProjects: React.FC = () => {
 
   const DRAG_SCRIPT = 'application/x-screenplays-script';
   const DRAG_PROJECT = 'application/x-screenplays-project';
+  const DRAG_LINK = 'application/x-screenplays-link';
+  // A Doc or link row: drag it onto a project to file it there (the link moves; the Doc itself stays where it is).
+  const dragLinkProps = (projectId: string, asset: ProjectAsset, url: string | null) => ({
+    draggable: !!url,
+    onDragStart: (e: React.DragEvent) => {
+      if (!url) return;
+      e.dataTransfer.setData(DRAG_LINK, JSON.stringify({ projectId, assetId: asset.id, url, name: linkDisplayName(asset) }));
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+    },
+  });
+  const moveLink = async (fromId: string, assetId: string, url: string, name: string, toId: string) => {
+    if (fromId === toId) return;
+    try {
+      await addProjectLink(toId, url, name, t(`navigator.projects.kind.${linkKind(url)}`));
+      await api.deleteAsset(fromId, assetId);
+      const to = (projects ?? []).find((p) => p.id === toId)?.name || '';
+      showToast(`Moved “${name}” to ${to}`, 'success'); // i18n-ignore: SwissCirkus
+      await Promise.all([refreshProject(fromId), refreshProject(toId)]);
+      openFolder(toId);
+    } catch (err) {
+      failed(err);
+    }
+  };
   const dragScriptProps = (projectId: string, scriptId: string) => ({
     draggable: true,
     onDragStart: (e: React.DragEvent) => {
@@ -456,7 +512,7 @@ const NavigatorProjects: React.FC = () => {
   const dropProps = (projectId: string) => ({
     onDragOver: (e: React.DragEvent) => {
       const types = Array.from(e.dataTransfer.types || []);
-      if (types.includes(DRAG_SCRIPT) || types.includes(DRAG_PROJECT)) {
+      if (types.includes(DRAG_SCRIPT) || types.includes(DRAG_PROJECT) || types.includes(DRAG_LINK)) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         if (dropTarget !== projectId) setDropTarget(projectId);
@@ -478,8 +534,16 @@ const NavigatorProjects: React.FC = () => {
         try { const { projectId: from, scriptId } = JSON.parse(script); void moveScript(from, scriptId, projectId); } catch { /* not ours */ }
         return;
       }
+      const movedLink = e.dataTransfer.getData(DRAG_LINK);
+      if (movedLink) {
+        e.preventDefault(); e.stopPropagation();
+        try { const m = JSON.parse(movedLink); void moveLink(m.projectId, m.assetId, m.url, m.name, projectId); } catch { /* not ours */ }
+        return;
+      }
       const project = e.dataTransfer.getData(DRAG_PROJECT);
       if (project) {
+        // Unfiled is never merged, and nothing is merged into it.
+        if (project === unfiledId || projectId === unfiledId) return;
         e.preventDefault(); e.stopPropagation();
         void mergeProject(project, projectId);
         return;
@@ -496,7 +560,7 @@ const NavigatorProjects: React.FC = () => {
     <>
       <div className="navigator-header" onContextMenu={(e) => openMenu(e, backgroundItems())}>
         <span className="navigator-title">{t('navigator.tabs.projects')}</span>
-        {projects && <span className="scene-count">{projects.length}</span>}
+        {folders && <span className="scene-count">{folders.length}</span>}
         <button
           type="button"
           className="nav-projects-new"
@@ -538,8 +602,57 @@ const NavigatorProjects: React.FC = () => {
           </form>
         )}
         {projects === null && <div className="navigator-empty">{t('navigator.projects.loading')}</div>}
-        {projects?.length === 0 && newProject === null && <div className="navigator-empty">{t('navigator.projects.empty')}</div>}
-        {projects?.map((project) => {
+        {unfiled && contents[unfiled.id] && (contents[unfiled.id]!.scripts.length > 0 || contents[unfiled.id]!.links.length > 0) && (() => {
+          const uc = contents[unfiled.id]!;
+          const isCurrentU = currentProject?.id === unfiled.id;
+          return (
+            // New scripts and Docs sit here until they're dragged onto a project (Christian 2026-11-15).
+            <div className={`nav-unfiled${dropTarget === unfiled.id ? ' drop-target' : ''}`} {...dropProps(unfiled.id)} title="New scripts and Docs — drag one onto a project to file it">{/* i18n-ignore: SwissCirkus */}
+              {uc.scripts.map((s) => {
+                const renamingScript = renaming?.kind === 'script' && renaming.id === s.id ? renaming : null;
+                if (renamingScript) {
+                  return (
+                    <div key={s.id} className="nav-project-item">
+                      <span className="nav-project-icon" aria-hidden="true">{'🎬'}</span>
+                      {renameInput(renamingScript)}
+                    </div>
+                  );
+                }
+                const isOpenScript = isCurrentU && currentScriptId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`nav-project-item nav-unfiled-item${isOpenScript ? ' current' : ''}`}
+                    {...dragScriptProps(unfiled.id, s.id)}
+                    onClick={() => openScript(unfiled.id, s)}
+                    onContextMenu={(e) => openMenu(e, scriptItems(unfiled.id, s))}
+                    onKeyDown={(e) => { if (e.key === 'F2') { e.preventDefault(); startRename({ kind: 'script', projectId: unfiled.id, id: s.id }, s.title); } }}
+                  >
+                    <span className="nav-project-icon" aria-hidden="true">{'🎬'}</span>
+                    <span className="nav-project-label">{s.title || t('navigator.projects.untitled')}</span>
+                  </button>
+                );
+              })}
+              {uc.links.map(({ asset, url }) => (
+                <div key={asset.id} className="nav-project-item nav-project-link nav-unfiled-item" {...dragLinkProps(unfiled.id, asset, url)} onContextMenu={(e) => openMenu(e, linkItems(unfiled.id, asset, url))}>
+                  <button
+                    type="button"
+                    className="nav-project-link-open"
+                    disabled={!url}
+                    onClick={() => { if (!url) return; if (linkKind(url) === 'gdoc') useDocView.getState().show(url, linkDisplayName(asset)); else openLinkInNewTab(url); }}
+                    title={url ?? ''}
+                  >
+                    <span className="nav-project-icon" aria-hidden="true">{linkIcon(url ? linkKind(url) : 'web')}</span>
+                    <span className="nav-project-label">{linkDisplayName(asset)}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        {folders?.length === 0 && !unfiled && newProject === null && <div className="navigator-empty">{t('navigator.projects.empty')}</div>}
+        {folders?.map((project) => {
           const folderOpen = isOpen(project.id);
           const c = contents[project.id];
           const isCurrent = currentProject?.id === project.id;
@@ -612,7 +725,7 @@ const NavigatorProjects: React.FC = () => {
 
                       {/* No heading over the Docs (Christian 2026-11-15: "just the Add Google Doc button is enough"). */}
                       {c.links.map(({ asset, url }) => (
-                        <div key={asset.id} className="nav-project-item nav-project-link" onContextMenu={(e) => openMenu(e, linkItems(project.id, asset, url))}>
+                        <div key={asset.id} className="nav-project-item nav-project-link" {...dragLinkProps(project.id, asset, url)} onContextMenu={(e) => openMenu(e, linkItems(project.id, asset, url))}>
                           <button
                             type="button"
                             className="nav-project-link-open"

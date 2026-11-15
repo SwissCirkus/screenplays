@@ -28,7 +28,7 @@ function fakeDrive() {
     async create(meta: DriveMeta, body) {
       if (!signedIn) throw new DriveAuthError('expired');
       const id = `f${++n}`;
-      files.set(id, { id, name: meta.name || '', parents: meta.parents, appProperties: meta.appProperties, mimeType: meta.mimeType, body: toBlob(body) });
+      files.set(id, { id, name: meta.name || '', parents: meta.parents, appProperties: meta.appProperties as Record<string, string> | undefined, mimeType: meta.mimeType, body: toBlob(body) });
       return files.get(id)!;
     },
     async update(id, meta, body) {
@@ -36,6 +36,12 @@ function fakeDrive() {
       const f = files.get(id);
       if (!f || f.trashed) throw new DriveNotFoundError(id);
       if (meta.name) f.name = meta.name;
+      // Like Drive: appProperties merge, and a null value removes the key.
+      if (meta.appProperties) {
+        const next: Record<string, string> = { ...(f.appProperties ?? {}) };
+        for (const [k, v] of Object.entries(meta.appProperties)) { if (v === null) delete next[k]; else next[k] = v; }
+        f.appProperties = next;
+      }
       if (body !== undefined) f.body = toBlob(body);
       return f;
     },
@@ -150,6 +156,26 @@ describe('Google Drive mirror (driveSync)', () => {
     await a.lib.deleteProject(p.id);
     await a.sync.flush();
     expect(drive.paths()).toEqual(['Screenplays']);
+  });
+
+  it('Remove (keep in Google Drive) leaves the files in Drive, and no copy brings the project back', async () => {
+    const drive = fakeDrive();
+    const a = device(drive);
+    await a.sync.connect();
+    const p = await a.lib.createProject('Kept');
+    await a.lib.createScript(p.id, { title: 'Draft', content: doc('stays') });
+    await a.sync.flush();
+    await a.lib.removeProjectKeepDrive(p.id);
+    await a.sync.flush();
+    expect(await a.lib.listProjects()).toEqual([]);
+    // still in Drive, not binned
+    expect(drive.paths()).toEqual(expect.arrayContaining(['Screenplays/Kept/project.json', 'Screenplays/Kept/Draft.screenplay.json', 'Screenplays/Kept/Draft.fountain']));
+    // a fresh copy of the writer (another browser, or this one after a reload) doesn't bring it back
+    const b = device(drive);
+    await b.sync.connect();
+    expect(await b.lib.listProjects()).toEqual([]);
+    await a.sync.connect();
+    expect(await a.lib.listProjects()).toEqual([]);
   });
 
   it('a second browser pulls everything on connect, and newer edits win', async () => {

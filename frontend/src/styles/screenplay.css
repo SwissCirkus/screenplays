@@ -15746,3 +15746,8 @@ html.foldable.wide .fold-panel-content .plugin-panel-tabs__content { flex: 1; wi
 ::-webkit-scrollbar-thumb:active { background: color-mix(in srgb, var(--fd-text, #e8e8e8) 46%, transparent) !important; }
 ::-webkit-scrollbar-button { display: none !important; width: 0 !important; height: 0 !important; }
 ::-webkit-scrollbar-corner { background: transparent !important; }
+
+/* Unfiled: new scripts and Docs at the top of the Projects tab until they're dragged onto a project (Christian 2026-11-15). */
+.nav-unfiled { padding: 2px 0 6px; margin-bottom: 4px; border-bottom: 1px solid var(--fd-border); }
+.nav-unfiled.drop-target { background: var(--fd-overlay-subtle); outline: 1px dashed var(--fd-accent); outline-offset: -2px; }
+.nav-unfiled .nav-unfiled-item { padding-left: 12px; }

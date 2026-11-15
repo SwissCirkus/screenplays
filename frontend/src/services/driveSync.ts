@@ -44,7 +44,7 @@ const MAP_KEY = 'drive/map';
 // ── Transport (fetch in the app, a fake in tests) ───────────────────────────
 
 export interface DriveFile { id: string; name: string; appProperties?: Record<string, string>; parents?: string[] }
-export interface DriveMeta { name?: string; mimeType?: string; parents?: string[]; appProperties?: Record<string, string> }
+export interface DriveMeta { name?: string; mimeType?: string; parents?: string[]; /** null removes a key */ appProperties?: Record<string, string | null> }
 export interface DriveTransport {
   /** Files (not trashed) whose appProperties include every pair in `props`; optionally under `parent`. */
   find(props: Record<string, string>, parent?: string): Promise<DriveFile[]>;
@@ -301,8 +301,25 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
     await put('templates', { sp: 'templates' }, await rootFolder(), 'templates.json', JSON.stringify(list));
   }
 
-  async function pushUnit(key: string, deleted: boolean) {
+  /** Keep the file in Drive but stop it being ours: its markers go, so nothing here finds it or brings it back. */
+  async function releaseKey(key: string, props: Record<string, string>) {
+    const id = await locate(key, props);
+    if (!id) return;
+    const cleared: Record<string, null> = {};
+    for (const k of Object.keys(props)) cleared[k] = null;
+    try { await transport.update(id, { appProperties: cleared }); } catch (e) { if (!(e instanceof DriveNotFoundError)) throw e; }
+    await remember(key, null);
+  }
+
+  async function pushUnit(key: string, deleted: boolean, release = false) {
     const [kind, a, b] = key.split('|');
+    if (release && kind === 'project') {
+      // Remove (keep in Google Drive): the project's folder and files stay where they are; project.json (how a project
+      // is found) and the folder lose their markers, so no copy of the writer brings it back (Christian 2026-11-15).
+      await releaseKey(`projectjson|${a}`, { sp: 'projectjson', spId: a });
+      await releaseKey(`folder|${a}`, { sp: 'project', spId: a });
+      return;
+    }
     if (deleted) {
       if (kind === 'project') await trashKey(`folder|${a}`, { sp: 'project', spId: a });
       else if (kind === 'script') {
@@ -403,7 +420,7 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
    */
   async function pull(): Promise<number> {
     let changedCount = 0;
-    const pending = new Set((await dirtyList()).map((k) => k.replace(/^-/, '')));
+    const pending = new Set((await dirtyList()).map((k) => k.replace(/^[-~]/, '')));
     const byId = (files: DriveFile[]) => {
       const m = new Map<string, DriveFile>();
       for (const f of files) { const id = f.appProperties?.spId; if (id && !m.has(id)) m.set(id, f); }
@@ -503,7 +520,7 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
     try {
       while (list.length) {
         const key = list[0];
-        await pushUnit(key.replace(/^-/, ''), key.startsWith('-'));
+        await pushUnit(key.replace(/^[-~]/, ''), key.startsWith('-') || key.startsWith('~'), key.startsWith('~'));
         // Re-read: more may have been queued while this one was writing.
         list = (await dirtyList()).filter((k) => k !== key);
         await setDirty(list);
@@ -534,13 +551,15 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
     markDirty(unit: ChangeUnit) {
       const key = unitKey(unit);
       const deleted = 'deleted' in unit && !!unit.deleted;
+      // "~" = removed here but kept in Drive (Remove, keep in Google Drive); "-" = deleted (Drive's bin too).
+      const keep = unit.kind === 'project' && deleted && !!unit.keepOnDrive;
       running = running.then(async () => {
-        const list = (await dirtyList()).filter((k) => k !== key && k !== `-${key}`);
+        const list = (await dirtyList()).filter((k) => k !== key && k !== `-${key}` && k !== `~${key}`);
         // A deleted project also drops its queued children.
         const kept = deleted && unit.kind === 'project'
-          ? list.filter((k) => !k.replace(/^-/, '').includes(`|${unit.projectId}`))
+          ? list.filter((k) => !k.replace(/^[-~]/, '').includes(`|${unit.projectId}`))
           : list;
-        kept.push(deleted ? `-${key}` : key);
+        kept.push(keep ? `~${key}` : deleted ? `-${key}` : key);
         // project.json lists the scripts and assets, so it follows them (once).
         if ((unit.kind === 'script' || unit.kind === 'asset')) {
           const pk = `project|${unit.projectId}`;

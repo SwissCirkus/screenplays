@@ -282,6 +282,10 @@ export const api = {
   deleteProject: (id: string) =>
     request<{ message: string }>(`/projects/${id}`, { method: 'DELETE' }),
 
+  /** SwissCirkus browser library only: take a project out of the writer but leave its files in Google Drive. */
+  removeProjectKeepDrive: (_id: string): Promise<{ message: string }> =>
+    Promise.reject(new Error('Removing a project but keeping it in Google Drive needs the browser library')), // i18n-ignore: never shown in this build
+
   reorderProjects: (items: Array<{ id: string; sort_order: number }>) =>
     request<{ message: string }>('/projects/reorder', {
       method: 'PUT',

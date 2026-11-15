@@ -43,7 +43,7 @@ export interface AssetRecord { meta: AssetMeta; blob: Blob }
 
 /** What changed, so the Drive mirror knows which file to rewrite or remove. */
 export type ChangeUnit =
-  | { kind: 'project'; projectId: string; deleted?: boolean }
+  | { kind: 'project'; projectId: string; deleted?: boolean; /** Removed here, but its files stay in Google Drive (unmarked). */ keepOnDrive?: boolean }
   | { kind: 'script'; projectId: string; scriptId: string; deleted?: boolean }
   | { kind: 'version'; projectId: string; versionId: string; deleted?: boolean }
   | { kind: 'asset'; projectId: string; assetId: string; deleted?: boolean }
@@ -189,6 +189,20 @@ export function createWebStorage(kv: KvStore, opts: WebStorageOptions = {}) {
     return meta;
   }
 
+  /** Take a project out of the library. keepOnDrive: Drive keeps its files (unmarked) instead of binning them. */
+  async function removeProject(id: string, keepOnDrive: boolean): Promise<{ message: string }> {
+    for (const meta of await allScripts(id)) {
+      await kv.delete(keys.content(meta.id));
+      await kv.delete(keys.script(id, meta.id));
+    }
+    for (const k of await kv.keys(keys.versions(id))) await kv.delete(k);
+    for (const k of await kv.keys(keys.assets(id))) await kv.delete(k);
+    await kv.delete(keys.project(id));
+    changed({ kind: 'project', projectId: id, deleted: true, ...(keepOnDrive ? { keepOnDrive: true } : {}) });
+    // i18n-ignore status payload returned by the storage layer, never shown
+    return { message: keepOnDrive ? 'removed' : 'deleted' };
+  }
+
   async function allScripts(projectId: string): Promise<ScriptMeta[]> {
     const ks = await kv.keys(keys.scripts(projectId));
     const metas = await Promise.all(ks.map((k) => kv.get<ScriptMeta>(k)));
@@ -276,16 +290,12 @@ export function createWebStorage(kv: KvStore, opts: WebStorageOptions = {}) {
     },
 
     async deleteProject(id: string): Promise<{ message: string }> {
-      for (const meta of await allScripts(id)) {
-        await kv.delete(keys.content(meta.id));
-        await kv.delete(keys.script(id, meta.id));
-      }
-      for (const k of await kv.keys(keys.versions(id))) await kv.delete(k);
-      for (const k of await kv.keys(keys.assets(id))) await kv.delete(k);
-      await kv.delete(keys.project(id));
-      changed({ kind: 'project', projectId: id, deleted: true });
-      // i18n-ignore status payload returned by the storage layer, never shown
-      return { message: 'deleted' };
+      return removeProject(id, false);
+    },
+
+    /** Right-click › Remove (keep in Google Drive) — Christian 2026-11-15: gone from the writer, its files left in Drive. */
+    async removeProjectKeepDrive(id: string): Promise<{ message: string }> {
+      return removeProject(id, true);
     },
 
     async reorderProjects(items: Array<{ id: string; sort_order: number }>): Promise<{ message: string }> {
