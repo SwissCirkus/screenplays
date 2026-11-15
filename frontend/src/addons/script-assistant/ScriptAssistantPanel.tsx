@@ -35,6 +35,7 @@ import {
 } from './docTools';
 import { addProjectLink } from '../../services/projectLinks';
 import { useDocView } from '../../stores/docViewStore';
+import { dictationMode, startDictation, type Dictation } from '../../services/browserDictation';
 /** Same name as browserLibraryInit's LIBRARY_CHANGED_EVENT (kept here so the panel doesn't load the library's start-up). */
 const LIBRARY_CHANGED_EVENT = 'screenplays:library-changed';
 import {
@@ -116,6 +117,29 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
   const aiReady = !!hello || (!!byok && !!byok.model);
   const [keyOpen, setKeyOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  // The browser's own mic (Christian 2026-11-15) — outside Kontroll only; Kontroll's dictation is used inside it.
+  const webMicRef = useRef<Dictation | null>(null);
+  const [webMic, setWebMic] = useState<'off' | 'on' | 'writing'>('off');
+  const [webLevels, setWebLevels] = useState<number[] | null>(null);
+  useEffect(() => () => { webMicRef.current?.stop(); }, []);
+  const toggleWebMic = async () => {
+    if (webMicRef.current) { webMicRef.current.stop(); return; }
+    const base = input.trim();
+    try {
+      webMicRef.current = await startDictation({
+        onText: (text) => setInput(base && text ? `${base} ${text}` : base || text),
+        onLevels: setWebLevels,
+        onTranscribing: () => setWebMic('writing'),
+        onEnd: (error) => { webMicRef.current = null; setWebMic('off'); setWebLevels(null); if (error) say('error', error); },
+      });
+      setWebMic('on');
+    } catch (err) {
+      webMicRef.current = null;
+      setWebMic('off');
+      say('error', err instanceof Error ? err.message : String(err));
+    }
+  };
+  const webDictation = !hello ? dictationMode() : null;
 
   // The open project's Google Docs, for the Attach menu.
   useEffect(() => {
@@ -588,6 +612,28 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
             </span>
           )}
           {hello?.mic && micStopping && <span className="sa-mic-note">{'Transcribing…' /* i18n-ignore: Kontroll-only */}</span>}
+          {!hello && webMic === 'on' && (
+            <span className="sa-mic-meter" role="img" aria-label="Listening">{/* i18n-ignore: web-only */}
+              {(webLevels ?? Array(9).fill(0)).map((v, i) => <span key={i} style={{ height: `${Math.max(8, Math.round(v * 100))}%` }} />)}
+            </span>
+          )}
+          {!hello && webMic === 'writing' && <span className="sa-mic-note">{'Transcribing…' /* i18n-ignore: web-only */}</span>}
+          {!hello && (
+            <button
+              type="button"
+              className={`sa-mic${webMic === 'on' ? ' live' : ''}`}
+              onClick={() => { void toggleWebMic(); }}
+              disabled={!!busy || webMic === 'writing' || (!webDictation && webMic === 'off')}
+              title={webMic === 'on' ? 'Stop dictating'
+                : webDictation === 'live' ? 'Dictate — talk instead of typing (the browser’s own speech recognition)'
+                  : webDictation === 'key' ? 'Dictate — talk, then it’s written out with your OpenAI or Gemini key'
+                    : 'Dictating needs Chrome or Edge, or an OpenAI or Gemini key in the key box'} // i18n-ignore: web-only
+              aria-label={webMic === 'on' ? 'Stop dictating' : 'Dictate'} // i18n-ignore: web-only
+              aria-pressed={webMic === 'on'}
+            >
+              <FaMicrophone />
+            </button>
+          )}
           {hello?.mic && (
             <button
               type="button"

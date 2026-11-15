@@ -169,12 +169,27 @@ export async function createDoc(title: string, text: string, useToken?: string):
 }
 
 /** Add text to the end of a Doc. */
-export async function appendToDoc(idOrUrl: string, text: string): Promise<void> {
+export async function appendToDoc(idOrUrl: string, text: string, useToken?: string): Promise<void> {
   const id = docIdOf(idOrUrl);
   await call(`https://docs.googleapis.com/v1/documents/${encodeURIComponent(id)}:batchUpdate`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requests: [{ insertText: { endOfSegmentLocation: {}, text: (text.startsWith('\n') ? '' : '\n') + text } }] }),
-  });
+  }, useToken);
+}
+
+/**
+ * Voice notes (Christian 2026-11-15): add a spoken piece to the end of a Doc, with whatever Google access this copy has —
+ * Google Docs access for any Doc, otherwise the Drive connection, which reaches the Docs the writer made from here.
+ */
+export async function appendToDocAnyAccess(idOrUrl: string, text: string): Promise<void> {
+  if (docsAccessOn()) return appendToDoc(idOrUrl, text);
+  const drive = currentDriveToken();
+  if (!drive) throw new Error('Connect Google Drive (top right), or set up Google Docs access, to write into this Doc');
+  try {
+    await appendToDoc(idOrUrl, text, drive);
+  } catch (err) {
+    throw new Error(`${err instanceof Error ? err.message : String(err)} — for a Doc made outside the writer, set up Google Docs access (the Google Drive button in the Script Assistant)`);
+  }
 }
 
 /** Replace all of a Doc's text (its formatting goes with it). */

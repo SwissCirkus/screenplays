@@ -21,6 +21,7 @@ import { ensureUnfiled, nextUntitled } from '../services/unfiled';
 import { createBlankDoc } from '../services/googleDocsAccess';
 import { addProjectLink } from '../services/projectLinks';
 import { useDocView } from '../stores/docViewStore';
+import { useVoiceNotes } from './voiceNotesStore';
 import { scriptRoute } from '../utils/projectRoutes';
 import { requestHandwriting } from '../utils/handwriting';
 import { requestElementMenu } from '../utils/elementMenu';
@@ -3650,6 +3651,8 @@ const MenuBar: React.FC<MenuBarProps> = ({
         { icon: <FaUserEdit />, label: t('menu:tools.reviewSuggestions'), action: () => useSuggestModeStore.getState().setPanelOpen(true) },
         { separator: true, label: '' },
         { icon: <FaProjectDiagram />, label: t('menu:tools.manageProjects'), action: goToProjects, disabled: isCollabGuest },
+        // SwissCirkus (Christian 2026-11-15): talk, and each sentence is added to a Google Doc.
+        ...(browserLibrary() ? [{ icon: <FaMicrophoneAlt />, label: 'Voice notes into a Google Doc…', action: () => useVoiceNotes.getState().setOpen(true) }] : []), // i18n-ignore: SwissCirkus
         { icon: <FaBoxes />, label: t('menu:tools.assetManager'), action: () => useAssetStore.getState().toggleAssetManager() },
         { separator: true, label: '' },
         {

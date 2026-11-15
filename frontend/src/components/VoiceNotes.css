@@ -1,0 +1,27 @@
+/* Voice notes into a Google Doc (SwissCirkus fork, Christian 2026-11-15). Bottom left, clear of Kontroll's ? and chat. */
+.vn-panel {
+  position: fixed; left: 16px; bottom: 44px; z-index: 9000; width: min(380px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px;
+  background: var(--fd-bg-secondary, #222); color: var(--fd-text); border: 1px solid var(--fd-border);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .35); font-size: 12.5px; resize: horizontal; overflow: auto; min-width: 280px;
+}
+.vn-head { display: flex; align-items: center; justify-content: space-between; }
+.vn-title { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.vn-icon { background: none; border: 0; color: var(--fd-text-muted); cursor: pointer; padding: 4px; }
+.vn-icon:hover:not(:disabled) { color: var(--fd-text); }
+.vn-into { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--fd-text-muted); }
+.vn-into strong { color: var(--fd-text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+.vn-link { background: none; border: 0; padding: 0; color: var(--fd-accent); cursor: pointer; text-decoration: underline; font-size: 12px; }
+.vn-link:disabled { opacity: .5; cursor: default; }
+.vn-controls { display: flex; align-items: center; gap: 10px; }
+/* Kontroll's play-button look: a white circle with a dark icon; red while recording. */
+.vn-mic { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .12); background: #fff; color: #111; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex: none; }
+.vn-mic:hover:not(:disabled) { background: #e8eaed; }
+.vn-mic.live { background: #c0392b; border-color: #c0392b; color: #fff; }
+.vn-mic:disabled { opacity: .45; cursor: default; }
+.vn-meter { display: inline-flex; align-items: center; gap: 2px; height: 22px; }
+.vn-meter > span { width: 3px; min-height: 2px; border-radius: 1px; background: var(--fd-accent); transition: height .08s linear; }
+.vn-status { color: var(--fd-text-muted); }
+.vn-heard { padding: 6px 8px; border-radius: 6px; background: var(--fd-overlay-subtle); line-height: 1.45; max-height: 120px; overflow: auto; }
+.vn-added { color: var(--fd-text-muted); line-height: 1.4; max-height: 90px; overflow: auto; }
+.vn-problem { color: #ff9b8a; line-height: 1.4; }

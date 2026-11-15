@@ -19,6 +19,7 @@ import VerifyEmailRoute from './components/VerifyEmailRoute';
 import ResetPasswordRoute from './components/ResetPasswordRoute';
 import { pluginRegistry } from './plugins/registry';
 import WebWelcome from './components/WebWelcome';
+import VoiceNotes from './components/VoiceNotes';
 import { browserLibrary } from './services/platform';
 // Registers the core add-ons (off until the writer turns them on). Imported
 // here rather than in main.tsx so OpenDraft-Pro, which reuses this App, gets
@@ -45,6 +46,8 @@ function App() {
     <>
       {/* SwissCirkus web build: splash, and a sign-in card on the first visit. */}
       {browserLibrary() && <WebWelcome />}
+      {/* Voice notes into a Google Doc (Tools menu) — SwissCirkus fork. */}
+      <VoiceNotes />
       <DemoBanner />
       <UpdateBanner />
       <Routes>
