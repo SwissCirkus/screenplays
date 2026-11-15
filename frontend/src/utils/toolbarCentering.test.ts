@@ -74,9 +74,15 @@ describe('Navigator burger at the toolbar\'s left edge', () => {
     expect(button).toMatch(/toggleNavigator\(\)/);
     expect(button).toMatch(/aria-pressed=\{navigatorOpenNow\}/);
     expect(button).toMatch(/<FaBars \/>/);
+    // Christian 2026-11-15: it hangs below the toolbar, in the writing area's corner, so the toolbar needs no room for it.
     const css = src('../styles/screenplay.css');
-    expect(css).toMatch(/\.toolbar\.has-nav-toggle \{ padding-left: 40px; \}/);
-    expect(css).toMatch(/\.toolbar-navigator-toggle \{\s*position: absolute; left: 6px;/);
+    expect(css).not.toMatch(/has-nav-toggle/);
+    expect(toolbar).not.toMatch(/has-nav-toggle/);
+    expect(css).toMatch(/\.toolbar-navigator-toggle \{\s*position: absolute; left: 6px; top: calc\(100% \+ 6px\);/);
+    // Past the Navigator when it's open, so it never covers the Navigator's tabs.
+    expect(button).toMatch(/left: \(navigatorOpenNow \? navPanelWidthNow \+ 4 : 0\) \+ 6/);
+    // A Doc shown full width leaves the corner free.
+    expect(src('../components/DocView.css')).toMatch(/\.doc-split:not\(\.on\) \.doc-view-bar \{ padding-left: 44px; \}/);
   });
 
   it('is no longer on the docked menu bar; the floating menu keeps its own', () => {

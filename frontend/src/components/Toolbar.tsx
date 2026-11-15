@@ -106,6 +106,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
   const foldState = useFoldState();
   const { t } = useTranslation(['toolbar', 'common']);
   const navigatorOpenNow = useEditorStore((s) => s.navigatorOpen);
+  const navPanelWidthNow = useEditorStore((s) => s.navPanelWidth);
   const { t: tMenu } = useTranslation('menu');
   const {
     activeElement,
@@ -1068,15 +1069,17 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
 
   return (
     <div
-      className={`toolbar has-nav-toggle${(toolbarMode === 'comfortable' || (foldState.foldable && foldState.size === 'phone' && toolbarMode === 'hidden')) ? ' toolbar-comfortable' : ''}${isInsideAvRow ? ' toolbar-av' : ''}`}
+      className={`toolbar${(toolbarMode === 'comfortable' || (foldState.foldable && foldState.size === 'phone' && toolbarMode === 'hidden')) ? ' toolbar-comfortable' : ''}${isInsideAvRow ? ' toolbar-av' : ''}`}
       ref={attachToolbar}
       role="group" aria-label={t('common:accessibility.formattingControls')}
     >
-      {/* SwissCirkus (Christian 2026-11-14): the Navigator ☰ sits at the toolbar's left edge and stays there; the tools after it
-          are centred over the page and move with it (utils/toolbarCentering.ts). Placed absolutely, so centring never moves it. */}
+      {/* SwissCirkus (Christian 2026-11-15): the Navigator ☰ hangs just below the toolbar, in the top-left corner of the
+          writing area (right of the Navigator when it's open), so the toolbar keeps its full width for one row of tools.
+          Placed absolutely and skipped by the overflow measure and the centring (utils/toolbarCentering.ts). */}
       <button
         type="button"
         className={`toolbar-navigator-toggle toolbar-pinned-left${navigatorOpenNow ? ' active' : ''}`}
+        style={{ left: (navigatorOpenNow ? navPanelWidthNow + 4 : 0) + 6 }}
         aria-label={tMenu('view.navigator')}
         aria-pressed={navigatorOpenNow}
         title={tMenu('view.navigator')}
