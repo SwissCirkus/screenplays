@@ -12,7 +12,12 @@ if [ -n "$(git status --porcelain -- frontend/src frontend/public frontend/index
   exit 1
 fi
 
-(cd frontend && MSYS_NO_PATHCONV=1 VITE_BASE=/screenplays/ VITE_COLLAB_SERVER="$COLLAB_SERVER" npx vite build)
+# Our own build stamp, shown in Help › About under OpenDraft's version: a number that goes up with every commit, the
+# commit, and the date (Christian 2026-11-15).
+SC_BUILD="$(git rev-list --count HEAD)"
+SC_COMMIT="$(git rev-parse --short HEAD)"
+SC_DATE="$(git log -1 --format=%cd --date=format:'%d %b %Y' | sed 's/^0//')"
+(cd frontend && MSYS_NO_PATHCONV=1 VITE_BASE=/screenplays/ VITE_COLLAB_SERVER="$COLLAB_SERVER"   VITE_SC_BUILD="$SC_BUILD" VITE_SC_COMMIT="$SC_COMMIT" VITE_SC_DATE="$SC_DATE" npx vite build)
 
 OUT="$(mktemp -d)"
 cp -r frontend/dist/. "$OUT/"

@@ -4426,6 +4426,12 @@ const MenuBar: React.FC<MenuBarProps> = ({
             <div className="about-title">Open Draft</div>{/* i18n-ignore: product name */}
             {/* i18n-ignore: release.sh rewrites these two literals each release */}
             <div className="about-version">Version 2.12.0</div>
+            {/* SwissCirkus fork (Christian 2026-11-15): our own build under OpenDraft's version — publish-pages.sh stamps it. */}
+            {import.meta.env.VITE_SC_BUILD && (
+              <div className="about-version about-fork-version">
+                {`SwissCirkus Screenplays · build ${import.meta.env.VITE_SC_BUILD}${import.meta.env.VITE_SC_COMMIT ? ` (${import.meta.env.VITE_SC_COMMIT})` : ''}${import.meta.env.VITE_SC_DATE ? ` · ${import.meta.env.VITE_SC_DATE}` : ''}` /* i18n-ignore: fork build stamp */}
+              </div>
+            )}
             <div className="about-tagline">{t('menu:about.tagline')}</div>
 
             <div className="about-whats-new">
