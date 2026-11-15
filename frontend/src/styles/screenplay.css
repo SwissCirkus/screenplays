@@ -15755,3 +15755,22 @@ html.foldable.wide .fold-panel-content .plugin-panel-tabs__content { flex: 1; wi
 .nav-unfiled { padding: 2px 0 6px; margin-bottom: 4px; border-bottom: 1px solid var(--fd-border); }
 .nav-unfiled.drop-target { background: var(--fd-overlay-subtle); outline: 1px dashed var(--fd-accent); outline-offset: -2px; }
 .nav-unfiled .nav-unfiled-item { padding-left: 12px; }
+
+/* Collaborate in the menu bar (SwissCirkus 2026-11-16): the Assistant button's look; lit while a session runs. */
+.menu-collab-btn.active { color: var(--fd-accent); border-color: var(--fd-accent); }
+/* Email suggestions from Gmail under the invite box (ShareDialog, services/googleContacts.ts). */
+.collab-name-wrap { position: relative; flex: 1; min-width: 0; }
+.collab-suggest {
+  position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 30; max-height: 260px; overflow-y: auto;
+  background: var(--fd-dropdown-bg, var(--fd-bg)); border: 1px solid var(--fd-border); box-shadow: 0 6px 20px rgba(0,0,0,.35);
+}
+.collab-suggest-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; padding: 6px 10px;
+  background: transparent; border: 0; color: var(--fd-text); text-align: left; cursor: pointer; font-size: 13px;
+}
+.collab-suggest-item:hover, .collab-suggest-item.on { background: var(--fd-overlay-light); }
+.collab-suggest-email { color: var(--fd-text-muted); font-size: 12px; }
+.collab-gmail-line { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 6px 0 10px; font-size: 12.5px; color: var(--fd-text-muted); }
+.collab-gmail-link { background: none; border: 0; padding: 0; color: var(--fd-accent); cursor: pointer; font-size: 12.5px; text-decoration: underline; }
+.collab-gmail-link:disabled { opacity: .6; cursor: default; }
+.collab-gmail-problem { color: #ff9b8a; }

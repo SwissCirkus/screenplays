@@ -9,6 +9,9 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { collabAuthApi, ensureCollabAuthenticated, collabAuthUnavailableMessage } from '../services/collabAuth';
 import { showToast } from './Toast';
 import Select from './Select';
+import { useContacts, loadContacts, suggest, gmailInviteUrl, type Contact } from '../services/googleContacts';
+
+const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 
 interface ShareDialogProps {
   projectId: string;
@@ -64,12 +67,25 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
   const [name, setName] = useState('');
   const [role, setRole] = useState<'editor' | 'suggester' | 'viewer'>('editor');
   const [expiryHours, setExpiryHours] = useState(
-    useSettingsStore.getState().defaultInviteExpiry || 1,
+    useSettingsStore.getState().defaultInviteExpiry || 168, // 7 days
   );
   const [sessions, setSessions] = useState<CollabSession[]>([]);
   const [generating, setGenerating] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Email suggestions from Google (services/googleContacts.ts, SwissCirkus 2026-11-16): picked → its address is kept with
+  // the invite, so the row can open a Gmail message with the link in it.
+  const contactsOn = useContacts((s) => s.on);
+  const contacts = useContacts((s) => s.contacts);
+  const contactsLoading = useContacts((s) => s.loading);
+  const contactsMessage = useContacts((s) => s.message);
+  const [pickedEmail, setPickedEmail] = useState('');
+  const [hi, setHi] = useState(-1);
+  const [listOpen, setListOpen] = useState(false);
+  const [emails, setEmails] = useState<Record<string, string>>({});
+  const hits = listOpen ? suggest(contacts, name) : [];
+  useEffect(() => { if (useContacts.getState().on) void loadContacts(false); }, []);
+  const pick = (c: Contact) => { setName(c.name || c.email); setPickedEmail(c.email); setListOpen(false); setHi(-1); inputRef.current?.focus(); };
   // Track whether pointerdown started on the overlay itself (not on the dialog box).
   // On iPad, keyboard dismissal can shift the dialog, causing a synthetic click
   // to land on the overlay even though the user tapped inside the dialog.
@@ -117,6 +133,9 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
       const existingNonce = sessions.length > 0 ? sessions[0].session_nonce || '' : '';
       const session = await api.createCollabInvite(projectId, scriptId, trimmed, role, expiryHours, existingNonce);
       setSessions((prev) => [...prev, session]);
+      const email = pickedEmail || (isEmail(trimmed) ? trimmed : '');
+      if (email) setEmails((prev) => ({ ...prev, [session.token]: email }));
+      setPickedEmail('');
       setName('');
       inputRef.current?.focus();
       showToast(t('share.toast.inviteCreated', { name: trimmed }), 'success');
@@ -150,13 +169,21 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
     }
   };
 
-  const copyLink = async (token: string) => {
-    // Build invite link from the collab server URL in Settings.
-    // The guest will open this on the collab server (which may be on a different
-    // machine than the frontend/backend).
+  // Build invite link from the collab server URL in Settings.
+  // The guest will open this on the collab server (which may be on a different
+  // machine than the frontend/backend).
+  const linkFor = (token: string) => {
     const collabWs = useSettingsStore.getState().collabServerUrl;
     const collabHttp = collabWs.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
-    const link = `${collabHttp}/collab/${token}`;
+    return `${collabHttp}/collab/${token}`;
+  };
+  // A Gmail message to them with the link filled in — you press Send in Gmail.
+  const emailInvite = (token: string) => {
+    window.open(gmailInviteUrl(emails[token], scriptTitle, linkFor(token)), '_blank', 'noopener');
+  };
+
+  const copyLink = async (token: string) => {
+    const link = linkFor(token);
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(link);
@@ -215,16 +242,43 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 
           <label className="dialog-label" style={{ fontSize: 14 }}>{t('share.inviteLabel')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              ref={inputRef}
-              className="dialog-input"
-              style={{ flex: 1 }}
-              placeholder={t('share.namePlaceholder')}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={generating}
-              aria-label={t('share.nameAria')}
-            />
+            <div className="collab-name-wrap">
+              <input
+                ref={inputRef}
+                className="dialog-input"
+                style={{ width: '100%' }}
+                placeholder={contactsOn ? 'Name or email — suggestions from Gmail' /* i18n-ignore */ : t('share.namePlaceholder')}
+                value={name}
+                onChange={(e) => { setName(e.target.value); setPickedEmail(''); setListOpen(true); setHi(-1); }}
+                onFocus={() => setListOpen(true)}
+                onBlur={() => setTimeout(() => setListOpen(false), 150)}
+                onKeyDown={(e) => {
+                  if (!hits.length) return;
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => Math.min(hits.length - 1, h + 1)); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(-1, h - 1)); }
+                  else if (e.key === 'Enter' && hi >= 0) { e.preventDefault(); e.stopPropagation(); pick(hits[hi]); }
+                  else if (e.key === 'Escape') { e.stopPropagation(); setListOpen(false); }
+                }}
+                disabled={generating}
+                aria-label={t('share.nameAria')}
+                aria-autocomplete="list"
+                aria-expanded={hits.length > 0}
+              />
+              {hits.length > 0 && (
+                <div className="collab-suggest" role="listbox">
+                  {hits.map((c, i) => (
+                    <button
+                      type="button" key={c.email} role="option" aria-selected={i === hi}
+                      className={`collab-suggest-item${i === hi ? ' on' : ''}`}
+                      onMouseDown={(e) => { e.preventDefault(); pick(c); }}
+                    >
+                      <span className="collab-suggest-name">{c.name || c.email}</span>
+                      {c.name && <span className="collab-suggest-email">{c.email}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               className="dialog-btn dialog-btn-primary"
               onClick={handleGenerate}
@@ -232,6 +286,20 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
             >
               {generating ? t('share.creating') : t('share.invite')}
             </button>
+          </div>
+          <div className="collab-gmail-line">
+            {pickedEmail && <span>{'Invite link for ' /* i18n-ignore */}<b>{pickedEmail}</b>{' — you can email it from the list below.' /* i18n-ignore */}</span>}
+            {!contactsOn && (
+              <button type="button" className="collab-gmail-link" onClick={() => void loadContacts(true)} disabled={contactsLoading}>
+                {contactsLoading ? 'Asking Google…' : 'Suggest people from Gmail' /* i18n-ignore */}
+              </button>
+            )}
+            {contactsOn && !contacts.length && (
+              <button type="button" className="collab-gmail-link" onClick={() => void loadContacts(true)} disabled={contactsLoading}>
+                {contactsLoading ? 'Loading suggestions…' : 'Load Gmail suggestions' /* i18n-ignore */}
+              </button>
+            )}
+            {contactsMessage && <span className="collab-gmail-problem">{contactsMessage}</span>}
           </div>
 
           {/* Role and expiry options */}
@@ -311,6 +379,15 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
                     </span>
                   </div>
                   <div className="collab-session-actions">
+                    {emails[s.token] && (
+                      <button
+                        className="collab-copy-btn"
+                        onClick={() => emailInvite(s.token)}
+                        title={`Open a Gmail message to ${emails[s.token]} with the link in it — you press Send` /* i18n-ignore */}
+                      >
+                        {'Email' /* i18n-ignore */}
+                      </button>
+                    )}
                     <button
                       className="collab-copy-btn"
                       onClick={() => copyLink(s.token)}

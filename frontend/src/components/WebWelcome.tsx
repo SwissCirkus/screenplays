@@ -1,8 +1,10 @@
 /**
  * Web build only (SwissCirkus fork, Christian 2026-11-15): make the online writer start like an app.
  *  - Every start: a short splash with the name.
- *  - First visit: a sign-in card — Sign in with Google (your scripts are kept in your own Google Drive) or carry on
- *    without (kept in this browser only). Either way it then opens the projects page, where scripts can be dropped in.
+ *  - First visit: a sign-in card — Sign in with Google (your scripts are kept in your own Google Drive) or Not now (kept
+ *    in this browser only). Either way it then opens straight onto a new, empty script, already saved as "Untitled" in
+ *    Unfiled, with the Navigator's Projects tab open beside it (Christian 2026-11-16: "takes them straight to an empty page
+ *    of a screenplay that is saved as in their projects as untitled … and projects on the side").
  *  - Inside Kontroll's Screenplay tab none of this shows (Kontroll says hello within moments of the page loading; the
  *    splash only fades in after that).
  * English only on purpose: this exists only on the SwissCirkus web build. // i18n-ignore
@@ -12,7 +14,11 @@ import { useNavigate } from 'react-router-dom';
 import { FaGoogle } from 'react-icons/fa';
 import { useKontrollBridge } from '../services/kontrollBridge';
 import { connectDrive, useDriveStatus, wasConnectedBefore } from '../services/driveSync';
-import { APP_NAME, nextStep } from './webWelcomeSteps';
+import { APP_NAME, nextStep, NAV_TAB_ONCE } from './webWelcomeSteps';
+import { api } from '../services/api';
+import { ensureUnfiled, nextUntitled } from '../services/unfiled';
+import { scriptRoute } from '../utils/projectRoutes';
+import { useEditorStore } from '../stores/editorStore';
 import './WebWelcome.css';
 
 const WELCOMED = 'screenplays:welcomed';
@@ -43,10 +49,23 @@ const WebWelcome: React.FC = () => {
     return () => window.clearTimeout(t);
   }, [hello, stage, firstVisit]);
 
-  const finish = () => {
+  // Straight into writing: a new empty script, saved as "Untitled" in Unfiled, with the Projects tab beside it.
+  const finish = async () => {
     try { localStorage.setItem(WELCOMED, '1'); } catch { /* private window */ }
+    setBusy(true);
+    try {
+      const unfiled = await ensureUnfiled();
+      const list = await api.listScripts(unfiled.id);
+      const made = await api.createScript(unfiled.id, { title: nextUntitled(list.map((m) => m.title)), format: 'screenplay' });
+      try { sessionStorage.setItem(NAV_TAB_ONCE, 'projects'); } catch { /* the Navigator just opens on Scenes */ }
+      if (!useEditorStore.getState().navigatorOpen) useEditorStore.getState().toggleNavigator();
+      window.dispatchEvent(new CustomEvent('screenplays:library-changed'));
+      navigate(scriptRoute(unfiled.id, made.meta));
+    } catch {
+      navigate('/projects'); // couldn't make the script: the projects page, as before
+    }
+    setBusy(false);
     setStage('gone');
-    navigate('/projects');
   };
 
   const signIn = async () => {
@@ -55,7 +74,7 @@ const WebWelcome: React.FC = () => {
     await connectDrive();
     setBusy(false);
     const st = useDriveStatus.getState();
-    if (wasConnectedBefore() && st.state !== 'ready') { finish(); return; }
+    if (wasConnectedBefore() && st.state !== 'ready') { void finish(); return; }
     setProblem(st.message ? `Google sign-in didn't finish (${st.message}). Try again, or carry on without signing in.` : 'Google sign-in didn\'t finish. Try again, or carry on without signing in.');
   };
 
@@ -77,9 +96,10 @@ const WebWelcome: React.FC = () => {
             <FaGoogle /> {busy ? 'Signing in…' : 'Sign in with Google'}
           </button>
           {problem && <div className="ww-problem" role="alert">{problem}</div>}
-          <button type="button" className="ww-skip" onClick={finish} disabled={busy}>
-            Carry on without signing in (scripts stay in this browser only)
+          <button type="button" className="ww-skip" onClick={() => void finish()} disabled={busy}>
+            Not now
           </button>
+          <div className="ww-skip-note">Without signing in, your scripts stay in this browser only. You can sign in later with the Drive button at the top right.</div>
         </div>
       ) : (
         <div className="ww-spinner" aria-hidden="true" />

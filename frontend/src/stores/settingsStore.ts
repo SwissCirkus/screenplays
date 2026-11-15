@@ -342,7 +342,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   authVerified: false,
   setAuthVerified: (verified) => set({ authVerified: verified }),
 
-  defaultInviteExpiry: parseInt(localStorage.getItem(STORAGE_KEY_EXPIRY) || '1', 10),
+  // SwissCirkus (Christian 2026-11-16): an invite link lasts 7 days unless you've picked another default (was 1 hour).
+  defaultInviteExpiry: parseInt(localStorage.getItem(STORAGE_KEY_EXPIRY) || '168', 10),
   setDefaultInviteExpiry: (hours) => {
     localStorage.setItem(STORAGE_KEY_EXPIRY, String(hours));
     set({ defaultInviteExpiry: hours });

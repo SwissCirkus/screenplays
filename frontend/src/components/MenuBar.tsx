@@ -4261,6 +4261,19 @@ const MenuBar: React.FC<MenuBarProps> = ({
           <FaMagic /> <span className="menu-assistant-label">{t('addons:scriptAssistant.button')}</span>
         </button>
       )}
+      {/* Collaborate (SwissCirkus, Christian 2026-11-16: "make collaborate button in the toolbar"): the same as Tools › Collaborate —
+          invite people to write with you (links last 7 days, Co-Edit, unless you choose otherwise). Lit while a session runs. */}
+      {onCollaborate && !isCollabGuest && (
+        <button
+          type="button"
+          className={`menu-assistant-btn menu-collab-btn${isCollabActive ? ' active' : ''}`}
+          title={isCollabActive ? 'Collaborating — invite more people or see who's invited' : 'Invite people to write this script with you'} // i18n-ignore: fork-only
+          onMouseDown={keepEditorSelection}
+          onClick={() => { setActiveMenu(null); onCollaborate(); }}
+        >
+          <FaUserFriends /> <span className="menu-assistant-label">{'Collaborate' /* i18n-ignore */}</span>
+        </button>
+      )}
       {/* SwissCirkus (Christian 2026-11-14): inside Kontroll, open this same page in the computer's web browser. */}
       {kontrollBrowser && (
         <button

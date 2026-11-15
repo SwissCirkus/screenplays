@@ -38,3 +38,7 @@
 @keyframes ww-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes ww-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ww-overlay, .ww-card, .ww-spinner { animation-duration: .01s; } }
+/* "Not now" (2026-11-16): a real button beside the Google one, with a quiet line under it. */
+.ww-skip { font-size: 14px; text-decoration: none; padding: 8px 18px; border: 1px solid rgba(255,255,255,.18); border-radius: 0; color: #c8c8d4; }
+.ww-skip:hover:not(:disabled) { background: rgba(255,255,255,.06); }
+.ww-skip-note { color: #8a8aa0; font-size: 12px; max-width: 360px; text-align: center; line-height: 1.4; }

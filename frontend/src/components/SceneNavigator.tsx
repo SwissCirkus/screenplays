@@ -288,7 +288,11 @@ const SceneNavigator: React.FC<SceneNavigatorProps> = ({ editor, scrollContainer
   const plotlines = useEditorStore((s) => s.plotlines);
   const fontFamily = useEditorStore((s) => s.fontFamily);
   const fontSize = useEditorStore((s) => s.fontSize);
-  const [activeTab, setActiveTab] = useState<NavTab>('scenes');
+  // SwissCirkus: after the first-visit welcome, the Projects tab opens once (WebWelcome sets the key).
+  const [activeTab, setActiveTab] = useState<NavTab>(() => {
+    try { if (sessionStorage.getItem('screenplays:navTabOnce') === 'projects') { sessionStorage.removeItem('screenplays:navTabOnce'); return 'projects'; } } catch { /* no storage */ }
+    return 'scenes';
+  });
   const [expandedLocation, setExpandedLocation] = useState<string | null>(null);
   const [renamingLocation, setRenamingLocation] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');

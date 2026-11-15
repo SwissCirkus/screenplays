@@ -21,6 +21,20 @@ describe('web welcome', () => {
     expect(w).toMatch(/if \(hello \|\| stage === 'gone'\) return null;/);
   });
 
+  // Christian 2026-11-16: sign in or Not now, then straight onto a new empty script saved as Untitled, Projects beside it.
+  it('after the welcome: a new Untitled script in Unfiled, opened, with the Projects tab showing', () => {
+    const w = src('./WebWelcome.tsx');
+    expect(w).toMatch(/>\s*Not now\s*</);
+    const fin = w.slice(w.indexOf('const finish = async'), w.indexOf('const signIn'));
+    expect(fin).toMatch(/const unfiled = await ensureUnfiled\(\);/);
+    expect(fin).toMatch(/api\.createScript\(unfiled\.id, \{ title: nextUntitled\(list\.map\(\(m\) => m\.title\)\), format: 'screenplay' \}\)/);
+    expect(fin).toMatch(/sessionStorage\.setItem\(NAV_TAB_ONCE, 'projects'\)/);
+    expect(fin).toMatch(/toggleNavigator\(\)/);
+    expect(fin).toMatch(/navigate\(scriptRoute\(unfiled\.id, made\.meta\)\);/);
+    expect(fin.indexOf("navigate('/projects')")).toBeGreaterThan(fin.indexOf('catch'));
+    expect(src('./SceneNavigator.tsx')).toMatch(/sessionStorage\.getItem\('screenplays:navTabOnce'\) === 'projects'/);
+  });
+
   it('turns the Script Assistant on in the web build too', () => {
     expect(src('../services/browserLibraryInit.ts')).toMatch(/autoEnableAssistant\(\);/);
   });
