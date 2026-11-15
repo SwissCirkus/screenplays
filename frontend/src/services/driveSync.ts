@@ -374,8 +374,23 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
   let filling: Promise<void> | null = null;
   /** Bring in the scripts' texts (six at a time), then versions, then assets — without holding up anything else. */
   function backgroundFill(versionFiles: DriveFile[] = [], assetJobs: Array<{ pid: string; meta: AssetMeta; file: DriveFile }> = []): Promise<void> {
+    // Links (Google Docs and other web links, small .url files) come first and show at once: they used to wait behind
+    // every script text and every big Original file, so a tab closed early never had them (Christian 2026-11-15: "all my
+    // Google Docs that I've added in my Kontroll version are not there in my browser version").
+    const isLink = (m: AssetMeta) => /\.url$/i.test(m.filename || m.original_name || '') || m.mime_type === 'application/internet-shortcut';
+    const linkJobs = assetJobs.filter((j) => isLink(j.meta));
+    const otherJobs = assetJobs.filter((j) => !isLink(j.meta));
+    const fetchAsset = async ({ pid, meta, file }: { pid: string; meta: AssetMeta; file: DriveFile }) => {
+      try {
+        const blob = await transport.download(file.id);
+        await kv.put(keys.asset(pid, meta.id), { meta, blob } satisfies AssetRecord);
+        await remember(`asset|${meta.id}`, file.id);
+      } catch (e) { if (e instanceof DriveAuthError) throw e; console.warn('[drive] asset skipped', meta.id, e); }
+    };
+    const shown = () => { try { opts.onPulled?.(); } catch { /* the list refreshes on the next one */ } };
     const run = async () => {
       try {
+        if (linkJobs.length) { await inParallel(linkJobs, 6, fetchAsset); shown(); }
         await inParallel(Object.keys(await lazyList()), 6, async (sid) => {
           try { await loadScript(sid); } catch (e) { if (e instanceof DriveAuthError) throw e; console.warn('[drive] script text skipped', sid, e); }
         });
@@ -387,13 +402,8 @@ export function createDriveSync(kv: KvStore, transport: DriveTransport, opts: Dr
           await kv.put(keys.version(pid, vid), v);
           await remember(`version|${vid}`, vf.id);
         });
-        await inParallel(assetJobs, 4, async ({ pid, meta, file }) => {
-          try {
-            const blob = await transport.download(file.id);
-            await kv.put(keys.asset(pid, meta.id), { meta, blob } satisfies AssetRecord);
-            await remember(`asset|${meta.id}`, file.id);
-          } catch (e) { if (e instanceof DriveAuthError) throw e; console.warn('[drive] asset skipped', meta.id, e); }
-        });
+        await inParallel(otherJobs, 4, fetchAsset);
+        if (otherJobs.length) shown();
       } catch (e) {
         handleError(e);
       }

@@ -178,6 +178,37 @@ describe('Google Drive mirror (driveSync)', () => {
     expect(await a.lib.listProjects()).toEqual([]);
   });
 
+  it("a second copy fetches Google Doc links first, before script texts and originals, and shows them", async () => {
+    const drive = fakeDrive();
+    const a = device(drive);
+    await a.sync.connect();
+    const p = await a.lib.createProject('Docs');
+    await a.lib.createScript(p.id, { title: 'Draft', content: doc('text') });
+    await a.lib.uploadAsset(p.id, new File([new Uint8Array(5000)], 'big.pdf', { type: 'application/pdf' }), ['original']);
+    await a.lib.uploadAsset(p.id, new File(['[InternetShortcut]\nURL=https://docs.google.com/document/d/x/edit\n'], 'Notes.url', { type: 'application/internet-shortcut' }));
+    await a.sync.flush();
+
+    const kv = createMemoryKv();
+    const order: string[] = [];
+    const real = drive.t.download.bind(drive.t);
+    const t = { ...drive.t, download: async (id: string) => { order.push(id); return real(id); } };
+    let shown = 0;
+    const sync = createDriveSync(kv, t, { debounceMs: 0, toFountain: async () => '', onPulled: () => { shown++; } });
+    const lib = createWebStorage(kv, { onChange: (u) => sync.markDirty(u), loadMissingContent: (pp, sid) => sync.loadScript(pp, sid) });
+    await sync.connect();
+    await sync.whenFilled();
+    const names = (await lib.listAssets(p.id)).map((x: { original_name: string }) => x.original_name).sort();
+    expect(names).toEqual(['Notes.url', 'big.pdf']);
+    const nameOf = (id: string) => [...drive.files.values()].find((f) => f.id === id)?.name ?? '';
+    const firstLink = order.findIndex((id) => nameOf(id) === 'Notes.url');
+    const firstScript = order.findIndex((id) => nameOf(id).endsWith('.screenplay.json'));
+    const firstPdf = order.findIndex((id) => nameOf(id) === 'big.pdf');
+    expect(firstLink).toBeGreaterThanOrEqual(0);
+    expect(firstLink).toBeLessThan(firstPdf);
+    if (firstScript >= 0) expect(firstLink).toBeLessThan(firstScript);
+    expect(shown).toBeGreaterThan(0);
+  });
+
   it('a second browser pulls everything on connect, and newer edits win', async () => {
     const drive = fakeDrive();
     const a = device(drive);
