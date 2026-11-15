@@ -4267,7 +4267,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
         <button
           type="button"
           className={`menu-assistant-btn menu-collab-btn${isCollabActive ? ' active' : ''}`}
-          title={isCollabActive ? 'Collaborating — invite more people or see who's invited' : 'Invite people to write this script with you'} // i18n-ignore: fork-only
+          title={isCollabActive ? "Collaborating — invite more people or see who's invited" : 'Invite people to write this script with you'} // i18n-ignore: fork-only
           onMouseDown={keepEditorSelection}
           onClick={() => { setActiveMenu(null); onCollaborate(); }}
         >
