@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { DOCS_OFF_PROMPT, DOCS_ON_PROMPT, isLookup, isWrite, lookupResult, parseDocActions } from './docTools';
+import { DOCS_OFF_PROMPT, DOCS_ON_PROMPT, isLookup, isWrite, lookupResult, matchProject, parseDocActions, projectsForModel } from './docTools';
 import {
   _setDocsTestHooks, appendToDoc, createDoc, docIdOf, readDoc, replaceDocText, searchDocs, setUpDocsAccess, turnOffDocsAccess, useDocsAccess,
 } from '../../services/googleDocsAccess';
@@ -122,5 +122,32 @@ describe('Google Docs calls', () => {
     expect(panel).toMatch(/onClick=\{\(\) => void applyDocs\(\)\}/);
     expect(panel).toMatch(/\{m\.setup && !docsOn && \(/);
     expect(panel).toMatch(/if \(!lookups\.length \|\| !docsHere \|\| round >= MAX_DOC_ROUNDS\) break;/);
+  });
+});
+
+describe('attaching Docs to projects (Christian 2026-11-15)', () => {
+  it('reads a link action, and drops one without a project', () => {
+    const r = parseDocActions('{"reply":"","docs":[{"do":"link","id":"d1","name":"Notes","project":"Goldpaw"},{"do":"link","id":"d2"}]}');
+    expect(r.actions).toEqual([{ do: 'link', id: 'd1', name: 'Notes', project: 'Goldpaw' }]);
+    expect(isWrite(r.actions[0])).toBe(true);
+    expect(DOCS_ON_PROMPT).toMatch(/"do":"link"/);
+    expect(DOCS_ON_PROMPT).toMatch(/misheard by dictation/);
+  });
+
+  it('finds the project it named, even with different case or punctuation', () => {
+    const ps = [{ id: '1', name: 'Chronicle Of Inevitable Days' }, { id: '2', name: 'Out Of Order' }, { id: '3', name: 'M For Maps' }];
+    expect(matchProject(ps, 'Chronicle Of Inevitable Days')?.id).toBe('1');
+    expect(matchProject(ps, 'out of order')?.id).toBe('2');
+    expect(matchProject(ps, 'M-for-Maps')?.id).toBe('3');
+    expect(matchProject(ps, 'Chronicle')?.id).toBe('1');
+    expect(matchProject(ps, 'Protocol')).toBeNull();
+    expect(projectsForModel(['A', 'B'])).toBe('THE WRITER\'S PROJECTS: "A", "B"');
+  });
+
+  it('the panel tells the model the projects and attaches through the project links', () => {
+    const panel = readFileSync(new URL('./ScriptAssistantPanel.tsx', import.meta.url), 'utf8');
+    expect(panel).toMatch(/projectNames = \(await api\.listProjects\(\)\)\.map\(\(p\) => p\.name\)/);
+    expect(panel).toMatch(/await addProjectLink\(project\.id, `https:\/\/docs\.google\.com\/document\/d\/\$\{docIdOf\(w\.id\)\}\/edit`/);
+    expect(readFileSync(new URL('../../components/NavigatorProjects.tsx', import.meta.url), 'utf8')).toMatch(/addEventListener\('screenplays:library-changed', onChanged\)/);
   });
 });

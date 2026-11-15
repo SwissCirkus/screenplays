@@ -30,10 +30,14 @@ import {
 } from './scriptEdits';
 import { SYSTEM_PROMPT, buildUserPrompt, type AttachedDoc, type Exchange } from './prompt';
 import {
-  DOCS_OFF_PROMPT, DOCS_ON_PROMPT, MAX_DOC_ROUNDS, isLookup, isWrite, lookupResult, parseDocActions, type DocWrite,
+  DOCS_OFF_PROMPT, DOCS_ON_PROMPT, MAX_DOC_ROUNDS, isLookup, isWrite, lookupResult, matchProject, parseDocActions,
+  projectsForModel, type DocWrite,
 } from './docTools';
+import { addProjectLink } from '../../services/projectLinks';
+/** Same name as browserLibraryInit's LIBRARY_CHANGED_EVENT (kept here so the panel doesn't load the library's start-up). */
+const LIBRARY_CHANGED_EVENT = 'screenplays:library-changed';
 import {
-  appendToDoc, createDoc, readDoc, replaceDocText, searchDocs, setUpDocsAccess, turnOffDocsAccess, useDocsAccess,
+  appendToDoc, createDoc, docIdOf, readDoc, replaceDocText, searchDocs, setUpDocsAccess, turnOffDocsAccess, useDocsAccess,
 } from '../../services/googleDocsAccess';
 import './scriptAssistant.css';
 
@@ -197,6 +201,9 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
       cursorScene: place.cursorScene, selection: place.selectedText,
     });
 
+    // The writer's projects, so the assistant can name them (and attach Docs to them) — Christian 2026-11-15.
+    let projectNames: string[] = [];
+    try { projectNames = (await api.listProjects()).map((p) => p.name); } catch { /* no list: it asks instead */ }
     const docsHere = useDocsAccess.getState().on;
     const system = SYSTEM_PROMPT + '\n' + (docsHere ? DOCS_ON_PROMPT : DOCS_OFF_PROMPT);
     const askModel = async (prompt: string) => {
@@ -214,7 +221,8 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     let docActs = parseDocActions('');
     for (let round = 0; ; round++) {
       setBusy('model');
-      const prompt = found.length ? `${user}\n\nGOOGLE DOCS RESULTS (from your searches and reads):\n${found.join('\n\n')}` : user;
+      const withProjects = `${user}\n\n${projectsForModel(projectNames)}`;
+      const prompt = found.length ? `${withProjects}\n\nGOOGLE DOCS RESULTS (from your searches and reads):\n${found.join('\n\n')}` : withProjects;
       answer = await askModel(prompt);
       setBusy(null);
       if (stoppedRef.current || answer.cancelled) { say('error', t('scriptAssistant.stopped')); return; }
@@ -255,10 +263,19 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     if (!chosen.length) return;
     setDocProposal(null);
     setBusy('lookup');
+    let projects: { id: string; name: string }[] = [];
+    if (chosen.some((w) => w.do === 'link')) { try { projects = await api.listProjects(); } catch { /* reported per link below */ } }
+    let linked = false;
     for (const w of chosen) {
       const name = w.do === 'create' ? w.title : (w.name || w.id);
       try {
-        if (w.do === 'create') {
+        if (w.do === 'link') {
+          const project = matchProject(projects, w.project);
+          if (!project) throw new Error(`there's no project called “${w.project}”`); // i18n-ignore: SwissCirkus fork
+          await addProjectLink(project.id, `https://docs.google.com/document/d/${docIdOf(w.id)}/edit`, w.name || '', 'Google Doc');
+          linked = true;
+          say('assistant', `Attached “${name}” to ${project.name} (under Google Docs & links).`); // i18n-ignore: SwissCirkus fork
+        } else if (w.do === 'create') {
           const made = await createDoc(w.title, w.text);
           say('assistant', `Made the Google Doc “${made.name}”: ${made.url}`); // i18n-ignore: SwissCirkus fork
         } else if (w.do === 'append') {
@@ -273,6 +290,7 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
       }
     }
     setBusy(null);
+    if (linked) { try { window.dispatchEvent(new CustomEvent(LIBRARY_CHANGED_EVENT)); } catch { /* ignore */ } }
   };
 
   const setUpDocs = async () => {
@@ -282,7 +300,10 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     if (ok) say('assistant', 'Google Docs access is on. Ask me to find, read or write any of your Google Docs — nothing in a Doc changes until you press Apply.'); // i18n-ignore: SwissCirkus fork
   };
 
-  const docTitle = (w: DocWrite) => (w.do === 'create' ? `Make a new Google Doc “${w.title}”` : w.do === 'append' ? `Add to “${w.name || w.id}”` : `Replace all the text of “${w.name || w.id}”`); // i18n-ignore: SwissCirkus fork
+  const docTitle = (w: DocWrite) => (w.do === 'create' ? `Make a new Google Doc “${w.title}”`
+    : w.do === 'append' ? `Add to “${w.name || w.id}”`
+      : w.do === 'link' ? `Attach “${w.name || w.id}” to the project ${w.project}`
+        : `Replace all the text of “${w.name || w.id}”`); // i18n-ignore: SwissCirkus fork
 
   const stop = () => { stoppedRef.current = true; if (abortRef.current) abortRef.current.abort(); else kontrollCancel(); };
 
@@ -498,7 +519,7 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
                   />
                   <span>{docTitle(w)}</span>
                 </summary>
-                <pre className="sa-edit-text">{docPreview(w.text)}</pre>
+                {w.do !== 'link' && <pre className="sa-edit-text">{docPreview(w.text)}</pre>}
               </details>
             ))}
             <div className="sa-proposal-actions">

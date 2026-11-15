@@ -10,9 +10,10 @@ export type DocAction =
   | { do: 'read'; id: string }
   | { do: 'create'; title: string; text: string }
   | { do: 'append'; id: string; name?: string; text: string }
-  | { do: 'replace'; id: string; name?: string; text: string };
+  | { do: 'replace'; id: string; name?: string; text: string }
+  | { do: 'link'; id: string; name?: string; project: string };
 
-export type DocWrite = Extract<DocAction, { do: 'create' | 'append' | 'replace' }>;
+export type DocWrite = Extract<DocAction, { do: 'create' | 'append' | 'replace' | 'link' }>;
 
 export const MAX_DOC_ROUNDS = 4;
 
@@ -24,6 +25,11 @@ export const DOCS_ON_PROMPT = [
   '- {"do":"create","title":"<title>","text":"<plain text>"}',
   '- {"do":"append","id":"<doc id>","name":"<doc name>","text":"<plain text to add at the end>"}',
   '- {"do":"replace","id":"<doc id>","name":"<doc name>","text":"<the Doc\'s whole new text>"}  (only when asked to rewrite a Doc)',
+  '- {"do":"link","id":"<doc id>","name":"<doc name>","project":"<one of THE WRITER\'S PROJECTS, exactly as listed>"}',
+  '  (attaches the Doc to that project: it shows under the project\'s "Google Docs & links" and goes to Drive with it;',
+  '  the Doc itself stays where it is). Use this when asked to add, attach, link, file or put Docs in a project.',
+  'Project names in the request may be misheard by dictation: match them to the closest name in THE WRITER\'S PROJECTS',
+  'and say which project you took. Ask only when no project is a reasonable match.',
   'Searches and reads run at once and come back to you as GOOGLE DOCS RESULTS, then you answer again with the same JSON.',
   'Search or read only what the request needs; never invent a Doc id. Changes to Docs (create/append/replace) are shown to the',
   'writer, who applies them; say in "reply" what each one does. To look things up, reply with only searches/reads and edits: [].',
@@ -58,6 +64,8 @@ export function parseDocActions(text: string): { actions: DocAction[]; setup: bo
     else if (kind === 'create' && str(o.text)) actions.push({ do: 'create', title: str(o.title) || 'Untitled', text: str(o.text) });
     else if ((kind === 'append' || kind === 'replace') && str(o.id) && str(o.text)) {
       actions.push({ do: kind, id: str(o.id), name: str(o.name) || undefined, text: str(o.text) });
+    } else if (kind === 'link' && str(o.id) && str(o.project)) {
+      actions.push({ do: 'link', id: str(o.id), name: str(o.name) || undefined, project: str(o.project) });
     }
   }
   return { actions, setup: obj.setup === true };
@@ -76,5 +84,20 @@ export function lookupResult(a: DocAction, outcome: { hits?: { id: string; name:
   }
   const d = outcome.doc!;
   return [`READ "${d.name}" (id ${d.id})${d.cut ? ' — only the first part, it is long' : ''}:`, d.text.trim() || '(empty)'].join('\n');
+}
+/** The writer's project the model named: exactly, then ignoring case and punctuation, then the one that contains it. */
+export function matchProject<P extends { name: string }>(projects: P[], asked: string): P | null {
+  const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const want = norm(asked);
+  if (!want) return null;
+  return projects.find((p) => p.name === asked)
+    ?? projects.find((p) => norm(p.name) === want)
+    ?? projects.find((p) => norm(p.name).includes(want) || want.includes(norm(p.name)))
+    ?? null;
+}
+
+/** The projects as the model reads them. */
+export function projectsForModel(names: string[]): string {
+  return names.length ? `THE WRITER'S PROJECTS: ${names.map((n) => `"${n}"`).join(', ')}` : "THE WRITER'S PROJECTS: (none yet)";
 }
 // i18n-ignore-end

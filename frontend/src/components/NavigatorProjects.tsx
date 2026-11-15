@@ -102,6 +102,12 @@ const NavigatorProjects: React.FC = () => {
       setProjects((prev) => prev ?? []);
     }
   }, []);
+  // Something else changed the library (Drive brought work in, the Script Assistant attached a Doc): show it.
+  useEffect(() => {
+    const onChanged = () => { requested.current.clear(); setContents({}); void reloadProjects(); };
+    window.addEventListener('screenplays:library-changed', onChanged);
+    return () => window.removeEventListener('screenplays:library-changed', onChanged);
+  }, [reloadProjects]);
 
   const isOpen = useCallback(
     (projectId: string) => !closed.has(projectId) && (opened.has(projectId) || currentProject?.id === projectId),
