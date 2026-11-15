@@ -8,7 +8,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- Google's sign-in script (gsi/client) comes without types, as in driveSync.ts */
 import { create } from 'zustand';
-import { GOOGLE_CLIENT_ID } from './driveSync';
+import { GOOGLE_CLIENT_ID, currentDriveToken } from './driveSync';
 
 export const DOCS_SCOPE = 'https://www.googleapis.com/auth/drive';
 const FLAG = 'screenplays:docsAccess';
@@ -106,8 +106,8 @@ async function currentToken(): Promise<string> {
   return token!;
 }
 
-async function call(url: string, init: RequestInit = {}): Promise<Response> {
-  const t = await currentToken();
+async function call(url: string, init: RequestInit = {}, useToken?: string): Promise<Response> {
+  const t = useToken ?? await currentToken();
   const r = await fetchImpl(url, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), Authorization: `Bearer ${t}` } });
   if (r.status === 401) { token = null; expiry = 0; }
   if (!r.ok) {
@@ -155,7 +155,7 @@ export async function readDoc(idOrUrl: string): Promise<{ id: string; name: stri
 }
 
 /** A new Google Doc with this text; returns where it is. */
-export async function createDoc(title: string, text: string): Promise<DocHit> {
+export async function createDoc(title: string, text: string, useToken?: string): Promise<DocHit> {
   const boundary = 'sp' + Math.random().toString(36).slice(2);
   const body = [
     `--${boundary}`, 'Content-Type: application/json; charset=UTF-8', '', JSON.stringify({ name: title || 'Untitled', mimeType: DOC_MIME }),
@@ -163,7 +163,7 @@ export async function createDoc(title: string, text: string): Promise<DocHit> {
   ].join('\r\n');
   const r = await call('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime,webViewLink', {
     method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body,
-  });
+  }, useToken);
   const f = (await r.json()) as { id: string; name: string; modifiedTime?: string; webViewLink?: string };
   return { id: f.id, name: f.name, modified: f.modifiedTime ?? '', url: f.webViewLink ?? `https://docs.google.com/document/d/${f.id}/edit` };
 }
@@ -203,4 +203,15 @@ export async function readDocHtml(idOrUrl: string): Promise<string> {
   base.setAttribute('target', '_blank');
   doc.head.prepend(base);
   return '<!doctype html>' + doc.documentElement.outerHTML;
+}
+
+/**
+ * File › New Google Doc (Christian 2026-11-15): a blank Doc in the writer's Drive, made with whatever Google access this
+ * copy has — Google Docs access if it's set up, otherwise the Drive connection (which may create files too).
+ */
+export async function createBlankDoc(title = 'Untitled document'): Promise<DocHit> {
+  if (docsAccessOn()) return createDoc(title, '');
+  const drive = currentDriveToken();
+  if (!drive) throw new Error('Connect Google Drive first (the button at the top right), then try again');
+  return createDoc(title, '', drive);
 }

@@ -17,6 +17,11 @@ import type { DocumentOrigin } from '../stores/editorStore';
 import { useProjectStore } from '../stores/projectStore';
 import { useAssetStore } from '../stores/assetStore';
 import { api } from '../services/api';
+import { ensureUnfiled, nextUntitled } from '../services/unfiled';
+import { createBlankDoc } from '../services/googleDocsAccess';
+import { addProjectLink } from '../services/projectLinks';
+import { useDocView } from '../stores/docViewStore';
+import { scriptRoute } from '../utils/projectRoutes';
 import { requestHandwriting } from '../utils/handwriting';
 import { requestElementMenu } from '../utils/elementMenu';
 import { isInAvRow, isInAvCell, avCellSideAt, avRowContext, readColumnConfig, avColumnDataCount, avBlockAtSelection, AV_DEFAULT_COLUMNS, AV_ASPECT_RATIOS, AV_BLANK_FRAME } from '../editor/extensions/AvBlock';
@@ -250,6 +255,7 @@ import {
   FaLayerGroup,
   FaUserEdit,
   FaTrashAlt,
+  FaGoogleDrive,
 } from 'react-icons/fa';
 import { REVISION_COLORS, nextRevisionColor } from '../editor/revisionColors';
 import RevisionSettingsDialog from './RevisionSettingsDialog';
@@ -2027,10 +2033,46 @@ const MenuBar: React.FC<MenuBarProps> = ({
   const [formatPickerMode, setFormatPickerMode] = useState<'reset' | 'apply-only'>('reset');
 
   /** Apply the chosen format (sets active template + seeds starter content). */
+  // SwissCirkus web build (Christian 2026-11-15: "when I write a new script, how do I know where this new script is gone?"):
+  // a new script is saved straight away into Unfiled as "Untitled" (then "Untitled 2"…), shown at the top of the
+  // Navigator's Projects tab until it's dragged onto a project, and it becomes the open script, so edits save there.
+  const fileNewScriptIntoUnfiled = useCallback(async () => {
+    if (!editor) return;
+    try {
+      const unfiled = await ensureUnfiled();
+      const list = await api.listScripts(unfiled.id);
+      const title = nextUntitled(list.map((m) => m.title));
+      const made = await api.createScript(unfiled.id, { title, format: 'screenplay', content: editor.getJSON() as Record<string, unknown> });
+      setCurrentProject(unfiled);
+      setCurrentScriptId(made.meta.id);
+      setScripts([...list, made.meta]);
+      useEditorStore.getState().setDocumentTitle(title);
+      window.history.replaceState(null, '', import.meta.env.BASE_URL.replace(/\/$/, '') + scriptRoute(unfiled.id, made.meta));
+      window.dispatchEvent(new CustomEvent('screenplays:library-changed'));
+    } catch (err) {
+      showToast(`Couldn't save the new script to Unfiled: ${err instanceof Error ? err.message : String(err)}`, 'error'); // i18n-ignore: SwissCirkus
+    }
+  }, [editor, setCurrentProject, setCurrentScriptId, setScripts]);
+
+  // File › New Google Doc (Christian 2026-11-15): a blank Doc, filed in Unfiled (top of the Projects tab) and open
+  // where the script is, ready to type into.
+  const handleNewGoogleDoc = useCallback(async () => {
+    try {
+      const made = await createBlankDoc();
+      const unfiled = await ensureUnfiled();
+      await addProjectLink(unfiled.id, made.url, made.name, 'Google Doc');
+      window.dispatchEvent(new CustomEvent('screenplays:library-changed'));
+      useDocView.getState().show(made.url, made.name);
+    } catch (err) {
+      showToast(`Couldn't make a Google Doc: ${err instanceof Error ? err.message : String(err)}`, 'error'); // i18n-ignore: SwissCirkus
+    }
+  }, []);
+
   const finishNewScreenplayWithFormat = useCallback((templateId: string, mode: 'reset' | 'apply-only' = 'reset') => {
     if (mode === 'reset') resetForNewScreenplay();
     applyScriptFormat(editor, templateId);
-  }, [editor, resetForNewScreenplay]);
+    if (mode === 'reset' && browserLibrary()) void fileNewScriptIntoUnfiled();
+  }, [editor, resetForNewScreenplay, fileNewScriptIntoUnfiled]);
 
   /** Run the format-selection flow. Mode 'reset' is the global New Screenplay
    *  action; 'apply-only' is invoked from in-project script creation, where the
@@ -2991,6 +3033,11 @@ const MenuBar: React.FC<MenuBarProps> = ({
           disabled: isCollabGuest,
           action: handleNewScreenplay,
         },
+        ...(browserLibrary() ? [{
+          icon: <FaGoogleDrive />,
+          label: 'New Google Doc', // i18n-ignore: SwissCirkus web build
+          action: () => { void handleNewGoogleDoc(); },
+        }] : []),
         ...(canOpenWindow ? [{
           icon: <FaFile />,
           label: t('menu:file.newWindow'),

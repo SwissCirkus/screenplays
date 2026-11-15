@@ -34,6 +34,7 @@ import {
   projectsForModel, type DocWrite,
 } from './docTools';
 import { addProjectLink } from '../../services/projectLinks';
+import { useDocView } from '../../stores/docViewStore';
 /** Same name as browserLibraryInit's LIBRARY_CHANGED_EVENT (kept here so the panel doesn't load the library's start-up). */
 const LIBRARY_CHANGED_EVENT = 'screenplays:library-changed';
 import {
@@ -190,8 +191,32 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
       }
     }
 
+    // The Google Doc open where the script is (Christian 2026-11-15: "make sure … the AI agent has got access to it") is
+    // read with every ask too — through Kontroll's Google sign-in inside Kontroll, or Google Docs access in a browser.
+    let openDocNote = '';
+    const shown = useDocView.getState().doc;
+    if (shown && !read.some((d) => d.url === shown.url)) {
+      setBusy('docs');
+      if (inKontroll()) {
+        const r = await kontrollReadDoc(shown.url);
+        if (r.ok) read.push({ name: `${r.title || shown.name} (open on screen)`, url: shown.url, text: r.text });
+        else openDocNote = `The writer has the Google Doc "${shown.name}" open on screen, but it couldn't be read (${r.needSignIn ? 'not signed in to Google' : r.error}).`;
+      } else if (useDocsAccess.getState().on) {
+        try {
+          const d = await readDoc(shown.url);
+          read.push({ name: `${d.name} (open on screen)`, url: shown.url, text: d.text });
+        } catch (err) {
+          openDocNote = `The writer has the Google Doc "${shown.name}" open on screen, but it couldn't be read (${err instanceof Error ? err.message : String(err)}).`;
+        }
+      } else {
+        openDocNote = `The writer has the Google Doc "${shown.name}" open on screen. It can't be read until Google Docs access is set up — if they ask about it, explain the setup and set "setup": true.`;
+      }
+      setBusy(null);
+    }
+
     const doc = editor.getJSON();
     const place = editorPlace(editor);
+
     const history: Exchange[] = messages
       .filter((m) => m.role !== 'error')
       .slice(-HISTORY_TURNS)
@@ -221,7 +246,7 @@ const ScriptAssistantPanel: React.FC<Props> = ({ editor }) => {
     let docActs = parseDocActions('');
     for (let round = 0; ; round++) {
       setBusy('model');
-      const withProjects = `${user}\n\n${projectsForModel(projectNames)}`;
+      const withProjects = `${user}\n\n${projectsForModel(projectNames)}${openDocNote ? `\n${openDocNote}` : ''}`;
       const prompt = found.length ? `${withProjects}\n\nGOOGLE DOCS RESULTS (from your searches and reads):\n${found.join('\n\n')}` : withProjects;
       answer = await askModel(prompt);
       setBusy(null);

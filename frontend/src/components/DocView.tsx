@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { FaArrowLeft, FaExternalLinkAlt, FaGoogleDrive } from 'react-icons/fa';
+import { FaArrowLeft, FaColumns, FaExternalLinkAlt, FaGoogleDrive } from 'react-icons/fa';
 import { useDocView } from '../stores/docViewStore';
 import { openLinkInNewTab } from '../services/projectLinks';
 import { readDocHtml, setUpDocsAccess, useDocsAccess } from '../services/googleDocsAccess';
@@ -18,6 +18,20 @@ import './DocView.css';
 const DocView: React.FC = () => {
   const doc = useDocView((s) => s.doc);
   const close = useDocView((s) => s.close);
+  const split = useDocView((s) => s.split);
+  const setSplit = useDocView((s) => s.setSplit);
+  const [dragging, setDragging] = useState(false);
+  // Side by side: drag the handle on the Doc's left edge to share the width with the script.
+  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const box = (e.currentTarget.parentElement?.parentElement as HTMLElement | null)?.getBoundingClientRect();
+    if (!box) return;
+    e.preventDefault();
+    setDragging(true);
+    const move = (ev: PointerEvent) => useDocView.getState().setSplitWidth(box.right - ev.clientX);
+    const up = () => { setDragging(false); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
   const docsOn = useDocsAccess((s) => s.on);
   const docsMessage = useDocsAccess((s) => s.message);
   const [mode, setMode] = useState<DocViewMode>(docViewMode);
@@ -53,9 +67,12 @@ const DocView: React.FC = () => {
 
   return (
     <div className="doc-view" role="region" aria-label={`Google Doc: ${doc.name}`}>
+      {split && <div className={`doc-view-handle${dragging ? ' dragging' : ''}`} role="separator" aria-orientation="vertical" aria-label="Drag to resize" onPointerDown={startDrag} />}
+      {/* While dragging, a cover keeps the Doc's own page from swallowing the mouse. */}
+      {dragging && <div style={{ position: 'fixed', inset: 0, zIndex: 50, cursor: 'col-resize' }} />}
       <div className="doc-view-bar">
-        <button type="button" className="doc-view-btn" onClick={close} title="Back to the script (Esc)">
-          <FaArrowLeft /> {'Back to script' /* i18n-ignore */}
+        <button type="button" className="doc-view-btn" onClick={close} title={split ? 'Close the Doc (Esc)' : 'Back to the script (Esc)'}>
+          <FaArrowLeft /> {split ? 'Close' : 'Back to script' /* i18n-ignore */}
         </button>
         <span className="doc-view-name" title={doc.url}>{'📄'} {doc.name}</span>
         <div className="doc-view-modes" role="radiogroup" aria-label="How to show the Doc">
@@ -64,6 +81,10 @@ const DocView: React.FC = () => {
           <button type="button" role="radio" aria-checked={mode === 'copy'} className={mode === 'copy' ? 'on' : ''} onClick={() => pick('copy')}
             title="A readable copy — works in any browser, read only">{'Readable copy' /* i18n-ignore */}</button>
         </div>
+        <button type="button" className={`doc-view-btn${split ? ' primary' : ''}`} aria-pressed={split} onClick={() => setSplit(!split)}
+          title={split ? 'Show the Doc on its own' : 'Show the Doc beside the script'}>
+          <FaColumns /> {'Side by side' /* i18n-ignore */}
+        </button>
         <button type="button" className="doc-view-btn" onClick={() => openLinkInNewTab(doc.url)} title="Open the Doc in its own tab">
           <FaExternalLinkAlt /> {'Open in new tab' /* i18n-ignore */}
         </button>

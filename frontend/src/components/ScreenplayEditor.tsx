@@ -1160,6 +1160,8 @@ const ScreenplayEditor: React.FC = () => {
   const phoneView = viewLayout === 'phone' || (foldState.foldable && foldState.fold === 'book');
   // A Google Doc from the Navigator shows in place of the page (SwissCirkus fork, 2026-11-15).
   const docShown = useDocView((st) => st.doc !== null);
+  const docSplit = useDocView((st) => st.split);
+  const docSplitWidth = useDocView((st) => st.splitWidth);
   const phoneViewRef = useRef(phoneView);
   phoneViewRef.current = phoneView;
 
@@ -5963,10 +5965,11 @@ const ScreenplayEditor: React.FC = () => {
           ) : !isHistoryMode && beatBoardOpen ? (
             <BeatBoard editor={editor} />
           ) : (
-            <>
-            {/* A Google Doc clicked in the Navigator shows here; the script stays loaded (hidden) underneath (2026-11-15). */}
+            // A Google Doc clicked in the Navigator shows here; the script stays loaded (hidden) underneath — or beside it,
+            // Side by side (2026-11-15).
+            <div className={`doc-split${docShown && docSplit ? ' on' : ''}`} style={{ '--doc-split-width': `${docSplitWidth}px` } as React.CSSProperties}>
             <DocView />
-            <div className={`editor-main${phoneView ? ' phone-layout' : ''}`} style={docShown ? { display: 'none' } : undefined} ref={attachEditorMain} onDragOver={handleEditorDragOver} onDragLeave={handleEditorDragLeave} onDrop={handleEditorDrop}>
+            <div className={`editor-main${phoneView ? ' phone-layout' : ''}`} style={docShown && !docSplit ? { display: 'none' } : undefined} ref={attachEditorMain} onDragOver={handleEditorDragOver} onDragLeave={handleEditorDragLeave} onDrop={handleEditorDrop}>
               <div
                 className="page-sizer"
                 style={phoneView ? {
@@ -6190,7 +6193,7 @@ const ScreenplayEditor: React.FC = () => {
               </div>
               </div>
             </div>
-            </>
+            </div>
           )}
           {/* Table Read docks over the bottom of the script it is reading. */}
           {storyTimelineOpen && editor && (

@@ -29,7 +29,7 @@ describe('Doc view', () => {
 
   it('the script stays loaded under it, and Navigator Docs open there', () => {
     const ed = src('./ScreenplayEditor.tsx');
-    expect(ed).toMatch(/<DocView \/>\s*<div className=\{`editor-main[^`]*`\} style=\{docShown \? \{ display: 'none' \} : undefined\}/);
+    expect(ed).toMatch(/<DocView \/>\s*<div className=\{`editor-main[^`]*`\} style=\{docShown && !docSplit \? \{ display: 'none' \} : undefined\}/);
     expect(src('./NavigatorProjects.tsx')).toMatch(/if \(linkKind\(url\) === 'gdoc'\) useDocView\.getState\(\)\.show\(url, linkDisplayName\(asset\)\); else openLinkInNewTab\(url\);/);
     const view = src('./DocView.tsx');
     expect(view).toMatch(/sandbox="allow-popups allow-popups-to-escape-sandbox" srcDoc=\{copyHere\}/);
