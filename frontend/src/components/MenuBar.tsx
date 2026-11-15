@@ -15,6 +15,7 @@ import type { JSONContent } from '@tiptap/core';
 import { useEditorStore, DEFAULT_PAGE_LAYOUT, printedPageNumber, resolveHeaderFooter, useEditorFields } from '../stores/editorStore';
 import type { DocumentOrigin } from '../stores/editorStore';
 import { useProjectStore } from '../stores/projectStore';
+import { useChromeSlots } from '../stores/chromeSlots';
 import { useAssetStore } from '../stores/assetStore';
 import { api } from '../services/api';
 import { ensureUnfiled, nextUntitled } from '../services/unfiled';
@@ -391,6 +392,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
   // Re-renders the bar when the language changes; the strings come from the module-level t,
   // which also serves the handlers below at the moment they run.
   useTranslation('menu');
+  const setToolbarSlot = useChromeSlots((s) => s.setToolbarSlot);
   const spellcheckLanguages = useSpellcheckLanguages(editor);
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -4191,7 +4193,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
   // The burger at the far left is a one-click way to the Navigator, which
   // otherwise lives two levels down in View > Panels. Only on the docked bar:
   // the floating menu already opens from its own burger button.
-  const renderMenuItems = (withNavigatorButton = false) => (
+  const renderMenuItems = (withNavigatorButton = false, docked = false) => (
     <>
       {withNavigatorButton && (
         <button
@@ -4238,7 +4240,11 @@ const MenuBar: React.FC<MenuBarProps> = ({
           <span className="menu-label">{t('menu:help.help')}</span>
         </div>
       </div>
-      <div className="menu-spacer" />
+      {/* The docked bar's middle is where the formatting tools join the menus when they all fit (Toolbar.tsx,
+          Christian 2026-11-15); the floating menu keeps a plain spacer. */}
+      {!docked
+        ? <div className="menu-spacer" />
+        : <div className="menu-spacer menu-toolbar-slot" ref={setToolbarSlot} />}
       {/* Script Assistant (SwissCirkus fork): one click to the panel on the right, while the add-on is on. By id
           and event only — the menu bar never reaches into an add-on (addons/boundary.test.ts). */}
       {pluginRegistry.isActive('script-assistant') && (
@@ -4321,8 +4327,8 @@ const MenuBar: React.FC<MenuBarProps> = ({
       )
     ) : (
       <div className={menuBarClass} ref={menuRef}>
-        {/* The Navigator ☰ lives at the formatting toolbar's left edge now (Toolbar.tsx, Christian 2026-11-14). */}
-        {renderMenuItems(false)}
+        {/* The Navigator ☰ lives in the writing area's top-left corner now (Toolbar.tsx, Christian 2026-11-15). */}
+        {renderMenuItems(false, true)}
       </div>
     )}
     {activeMenuData && createPortal(

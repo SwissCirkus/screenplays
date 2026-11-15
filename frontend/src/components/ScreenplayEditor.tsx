@@ -65,6 +65,7 @@ import { demoteDataUrlsToScratch, promoteScratchImages } from '../services/promo
 import { docHasInlineImageBytes, docHasScratchImages } from '../utils/scratchRefs';
 import { setLiveScratchDocSource } from '../services/scratchSweep';
 
+import { useChromeSlots } from '../stores/chromeSlots';
 import { useEditorStore, DEFAULT_PAGE_LAYOUT, DEFAULT_TAG_CATEGORIES, resolveMoresContds, resolveHeaderFooter, printedPageNumber, savedProfileFields, type SceneInfo } from '../stores/editorStore';
 import type { ElementType, HeaderFooterContent } from '../stores/editorStore';
 import HeaderFooterBand from './HeaderFooterBand';
@@ -1798,6 +1799,7 @@ const ScreenplayEditor: React.FC = () => {
   const [scribbleOpen, setScribbleOpen] = useState(false);
   const [scribbleActivation, setScribbleActivation] = useState(0);
   const scribbleHome = useRef<HTMLDivElement>(null);
+  const setNavCorner = useChromeSlots((s) => s.setNavCorner);
   const padPosture = foldState.foldable && foldState.fold !== 'flat';
   const padCanDock = useFoldWritingPadDock(padPosture, foldState.fold === 'laptop' && foldState.foldRect ? foldState.foldRect.bottom : null);
 
@@ -5957,6 +5959,8 @@ const ScreenplayEditor: React.FC = () => {
             onPointerDown={(e) => handleResizePointerDown('left', e)} style={{ touchAction: 'none' }} />
         )}
         <div className="editor-center">
+          {/* The Navigator ☰'s corner (Toolbar.tsx portals it here, Christian 2026-11-15): no height, so nothing moves. */}
+          {!isHistoryMode && <div className="nav-corner" ref={setNavCorner} />}
           {!isHistoryMode && <IndexCards editor={editor} scrollContainer={editorMainEl} />}
           {!isHistoryMode && outlineOpen && editor ? (
             <OutlineView editor={editor} />

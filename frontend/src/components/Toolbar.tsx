@@ -54,6 +54,8 @@ import Select from './Select';
 import { useFoldState } from '../hooks/useFoldState';
 import { PHONE_DEVICE_CHANGE_EVENT } from '../utils/phoneDevice';
 import { centerToolbarOverPage, toolbarCenterTarget } from '../utils/toolbarCentering';
+import { createPortal } from 'react-dom';
+import { useChromeSlots } from '../stores/chromeSlots';
 import { formatShortcut } from '../utils/shortcuts';
 import { elementShortcutSpec } from '../utils/elementShortcuts';
 import { elementLabel, elementDescription } from '../editor/elementLabels';
@@ -106,7 +108,10 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
   const foldState = useFoldState();
   const { t } = useTranslation(['toolbar', 'common']);
   const navigatorOpenNow = useEditorStore((s) => s.navigatorOpen);
-  const navPanelWidthNow = useEditorStore((s) => s.navPanelWidth);
+  // Where the tools and the ☰ are drawn (stores/chromeSlots.ts).
+  const toolbarSlot = useChromeSlots((s) => s.toolbarSlot);
+  const navCorner = useChromeSlots((s) => s.navCorner);
+  const [inMenu, setInMenu] = useState(false);
   const { t: tMenu } = useTranslation('menu');
   const {
     activeElement,
@@ -430,6 +435,19 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
   // below cannot see.
   useEffect(() => { remeasureRef.current(); }, [isInsideAvRow]);
 
+  // The menu bar's middle grows and shrinks on its own (window, Assistant / account buttons): ask again whether the
+  // tools fit there.
+  useEffect(() => {
+    if (!toolbarSlot || typeof ResizeObserver === 'undefined') return;
+    let last = -1;
+    const ro = new ResizeObserver(() => {
+      const w = Math.round(toolbarSlot.clientWidth);
+      if (w !== last) { last = w; remeasureRef.current(); }
+    });
+    ro.observe(toolbarSlot);
+    return () => ro.disconnect();
+  }, [toolbarSlot]);
+
   // Measure toolbar overflow and determine which priority groups to hide
   useEffect(() => {
     const toolbar = toolbarRef.current;
@@ -456,7 +474,6 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
       let totalWidth = 0;
       for (const child of toolbar.children) {
         const el = child as HTMLElement;
-        if (el.classList.contains('toolbar-pinned-left')) continue; // the ☰ sits in the padding, outside the flow
         const w = el.offsetWidth;
         if (el.dataset.priority) {
           // CSS-hidden items (e.g. toolbar-desktop-only on mobile) have 0 width —
@@ -469,6 +486,14 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
         }
         totalWidth += w + 2;
       }
+
+      // One row with the menus (Christian 2026-11-15): the tools join the menu bar when ALL of them fit in its middle,
+      // and drop back to their own row the moment anything would have to fold into "…". Measured with every group
+      // shown and without the spacer's slack, so the answer is the same from either place and never flips back and forth.
+      const spacer = toolbar.querySelector<HTMLElement>(':scope > .toolbar-spacer');
+      const needed = totalWidth - (spacer ? spacer.offsetWidth + 2 : 0) + 16;
+      const slot = useChromeSlots.getState().toolbarSlot;
+      setInMenu(!!slot && !phoneChromeNow() && slot.clientWidth >= needed);
 
       if (totalWidth > containerWidth) {
         let currentTotal = totalWidth + OVERFLOW_BTN_WIDTH;
@@ -1067,27 +1092,12 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
 
   if (toolbarMode === 'hidden' && (focusMode || !foldState.foldable || foldState.size !== 'phone')) return null;
 
-  return (
+  const bar = (
     <div
-      className={`toolbar${(toolbarMode === 'comfortable' || (foldState.foldable && foldState.size === 'phone' && toolbarMode === 'hidden')) ? ' toolbar-comfortable' : ''}${isInsideAvRow ? ' toolbar-av' : ''}`}
+      className={`toolbar${inMenu ? ' toolbar-in-menu' : ''}${(toolbarMode === 'comfortable' || (foldState.foldable && foldState.size === 'phone' && toolbarMode === 'hidden')) ? ' toolbar-comfortable' : ''}${isInsideAvRow ? ' toolbar-av' : ''}`}
       ref={attachToolbar}
       role="group" aria-label={t('common:accessibility.formattingControls')}
     >
-      {/* SwissCirkus (Christian 2026-11-15): the Navigator ☰ hangs just below the toolbar, in the top-left corner of the
-          writing area (right of the Navigator when it's open), so the toolbar keeps its full width for one row of tools.
-          Placed absolutely and skipped by the overflow measure and the centring (utils/toolbarCentering.ts). */}
-      <button
-        type="button"
-        className={`toolbar-navigator-toggle toolbar-pinned-left${navigatorOpenNow ? ' active' : ''}`}
-        style={{ left: (navigatorOpenNow ? navPanelWidthNow + 4 : 0) + 6 }}
-        aria-label={tMenu('view.navigator')}
-        aria-pressed={navigatorOpenNow}
-        title={tMenu('view.navigator')}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => useEditorStore.getState().toggleNavigator()}
-      >
-        <FaBars />
-      </button>
       {/* Undo / Redo — always visible */}
       <div className="toolbar-group">
         <button
@@ -1301,6 +1311,34 @@ const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
       </div>
     </div>
   );
+
+  // SwissCirkus (Christian 2026-11-15): the Navigator ☰ sits in the top-left corner of the writing area (right of the
+  // Navigator when it's open), never on the toolbar, so the toolbar can join the menu bar's row.
+  const burger = (
+    <button
+      type="button"
+      className={`toolbar-navigator-toggle${navigatorOpenNow ? ' active' : ''}${toolbarMode === 'comfortable' ? ' comfortable' : ''}`}
+      aria-label={tMenu('view.navigator')}
+      aria-pressed={navigatorOpenNow}
+      title={tMenu('view.navigator')}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => useEditorStore.getState().toggleNavigator()}
+    >
+      <FaBars />
+    </button>
+  );
+
+  return (
+    <>
+      {inMenu && toolbarSlot ? createPortal(bar, toolbarSlot) : bar}
+      {navCorner && createPortal(burger, navCorner)}
+    </>
+  );
 };
+
+/** The phone chrome (html.phone, main.tsx) keeps the toolbar on its own row. */
+function phoneChromeNow(): boolean {
+  return typeof document !== 'undefined' && document.documentElement.classList.contains('phone');
+}
 
 export default React.memo(Toolbar);

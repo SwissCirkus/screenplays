@@ -122,7 +122,9 @@ describe('Navigator › Projects tab', () => {
 
   it('reads link URLs before the click, so opening is not blocked as a pop-up', () => {
     expect(tab).toMatch(/readProjectLink\(projectId, asset\)/);
-    expect(tab).toMatch(/onClick=\{\(\) => \{ if \(url\) openLinkInNewTab\(url\); \}\}/);
+    // A Google Doc opens in place of the script (2026-11-15); other links still open in a new tab, straight from the click.
+    expect(tab).toMatch(/onClick=\{\(\) => \{ if \(!url\) return; if \(linkKind\(url\) === 'gdoc'\) useDocView\.getState\(\)\.show\(url, linkDisplayName\(asset\)\); else openLinkInNewTab\(url\); \}\}/);
+    expect(tab).toMatch(/onSelect: \(\) => \{ if \(url\) openLinkInNewTab\(url\); \}/);
   });
 
   it('lists projects and contents through the same api Manage Projects uses', () => {

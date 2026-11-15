@@ -740,10 +740,15 @@ body {
   position: relative; z-index: 20;
 }
 .toolbar.toolbar-comfortable { height: 36px; }
-/* The Navigator ☰ (SwissCirkus, 2026-11-15): hangs just below the toolbar in the writing area's top-left corner, so the
-   toolbar needs no room for it and fits its tools on one row. `left` is set inline (past the Navigator when it's open). */
+/* SwissCirkus, 2026-11-15: menus and tools on ONE row when they all fit. The docked menu bar's middle is a slot the
+   toolbar moves into (Toolbar.tsx decides: everything must fit, else it keeps its own row below, as before). */
+.menu-toolbar-slot { display: flex; align-items: stretch; flex: 1 1 0; min-width: 0; align-self: stretch; }
+.menu-toolbar-slot > .toolbar.toolbar-in-menu { flex: 1 1 auto; min-width: 0; height: auto; background: transparent; box-shadow: none; padding: 0 8px; }
+/* The Navigator ☰ sits in the writing area's top-left corner (right of the Navigator when it's open), never on the
+   toolbar. The corner has no height, so the page doesn't move. */
+.nav-corner { position: relative; height: 0; flex: none; z-index: 19; }
 .toolbar-navigator-toggle {
-  position: absolute; left: 6px; top: calc(100% + 6px);
+  position: absolute; left: 6px; top: 6px;
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 24px; padding: 0; border: none; border-radius: 6px;
   background: transparent; color: var(--fd-text-muted); font-size: 13px; cursor: pointer;
@@ -752,7 +757,7 @@ body {
 .toolbar-navigator-toggle:hover { background: var(--fd-overlay-light); color: var(--fd-text); }
 .toolbar-navigator-toggle.active { color: var(--fd-accent); }
 .toolbar-navigator-toggle:focus-visible { outline: 2px solid var(--fd-accent); outline-offset: -2px; }
-.toolbar.toolbar-comfortable .toolbar-navigator-toggle { width: 34px; height: 30px; font-size: 15px; }
+.toolbar-navigator-toggle.comfortable { width: 34px; height: 30px; font-size: 15px; }
 .toolbar-group { display: flex; align-items: center; gap: 1px; }
 .toolbar-btn {
   display: flex; align-items: center; justify-content: center;

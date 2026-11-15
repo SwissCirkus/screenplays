@@ -61,32 +61,44 @@ describe('toolbar wiring', () => {
   });
 });
 
-// Christian 2026-11-14: the ☰ moves down onto the toolbar and sticks to its left; the tools are centred over the page.
-describe('Navigator burger at the toolbar\'s left edge', () => {
+// Christian 2026-11-14/15: the ☰ leaves the bars for the writing area's top-left corner; the tools join the menu bar's row
+// when they all fit, and keep their own row below it when they don't.
+describe('Navigator burger in the writing area\'s corner', () => {
   const menuBar = src('../components/MenuBar.tsx');
 
-  it('is the toolbar\'s first control, pinned left, and toggles the Navigator', () => {
-    const start = toolbar.indexOf('ref={toolbarRef}');
-    const burger = toolbar.indexOf('toolbar-navigator-toggle toolbar-pinned-left', start);
-    expect(burger).toBeGreaterThan(start);
-    expect(burger).toBeLessThan(toolbar.indexOf('{/* Undo / Redo', start));
+  it('is portalled into the corner, toggles the Navigator, and takes no toolbar room', () => {
+    const burger = toolbar.indexOf('const burger = (');
+    expect(burger).toBeGreaterThan(-1);
     const button = toolbar.slice(burger, toolbar.indexOf('</button>', burger));
     expect(button).toMatch(/toggleNavigator\(\)/);
     expect(button).toMatch(/aria-pressed=\{navigatorOpenNow\}/);
     expect(button).toMatch(/<FaBars \/>/);
-    // Christian 2026-11-15: it hangs below the toolbar, in the writing area's corner, so the toolbar needs no room for it.
+    expect(toolbar).toMatch(/\{navCorner && createPortal\(burger, navCorner\)\}/);
+    const editor = src('../components/ScreenplayEditor.tsx');
+    const center = editor.indexOf('<div className="editor-center">');
+    expect(editor.indexOf('<div className="nav-corner" ref={setNavCorner} />', center)).toBeGreaterThan(center);
     const css = src('../styles/screenplay.css');
     expect(css).not.toMatch(/has-nav-toggle/);
-    expect(toolbar).not.toMatch(/has-nav-toggle/);
-    expect(css).toMatch(/\.toolbar-navigator-toggle \{\s*position: absolute; left: 6px; top: calc\(100% \+ 6px\);/);
-    // Past the Navigator when it's open, so it never covers the Navigator's tabs.
-    expect(button).toMatch(/left: \(navigatorOpenNow \? navPanelWidthNow \+ 4 : 0\) \+ 6/);
-    // A Doc shown full width leaves the corner free.
+    expect(css).toMatch(/\.nav-corner \{ position: relative; height: 0;/);
+    expect(css).toMatch(/\.toolbar-navigator-toggle \{\s*position: absolute; left: 6px; top: 6px;/);
     expect(src('../components/DocView.css')).toMatch(/\.doc-split:not\(\.on\) \.doc-view-bar \{ padding-left: 44px; \}/);
   });
 
+  it('the tools join the docked menu bar only when every one of them fits', () => {
+    expect(menuBar).toMatch(/<div className="menu-spacer menu-toolbar-slot" ref=\{setToolbarSlot\} \/>/);
+    expect(menuBar).toMatch(/\{renderMenuItems\(false, true\)\}/);
+    expect(toolbar).toMatch(/\{inMenu && toolbarSlot \? createPortal\(bar, toolbarSlot\) : bar\}/);
+    const measure = toolbar.slice(toolbar.indexOf('const measure = () => {'));
+    const decide = measure.indexOf('setInMenu(!!slot && !phoneChromeNow() && slot.clientWidth >= needed)');
+    expect(decide).toBeGreaterThan(-1);
+    // Measured with every group shown (before any fold into "…") and without the spacer's slack.
+    expect(decide).toBeLessThan(measure.indexOf('if (totalWidth > containerWidth)'));
+    expect(measure).toMatch(/const needed = totalWidth - \(spacer \? spacer\.offsetWidth \+ 2 : 0\) \+ 16;/);
+    expect(toolbar).toMatch(/ro\.observe\(toolbarSlot\)/);
+  });
+
   it('is no longer on the docked menu bar; the floating menu keeps its own', () => {
-    expect(menuBar).toMatch(/<div className=\{menuBarClass\} ref=\{menuRef\}>\s*\{\/\*[^*]*\*\/\}\s*\{renderMenuItems\(false\)\}/);
+    expect(menuBar).toMatch(/<div className=\{menuBarClass\} ref=\{menuRef\}>\s*\{\/\*[^*]*\*\/\}\s*\{renderMenuItems\(false, true\)\}/);
     expect(menuBar).toMatch(/menu-bar--floating" style=\{mStyle\} ref=\{menuRef\}>\s*\{renderMenuItems\(\)\}/);
   });
 
