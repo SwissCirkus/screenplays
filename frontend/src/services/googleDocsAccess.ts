@@ -140,7 +140,7 @@ export async function searchDocs(query: string, max = 10): Promise<DocHit[]> {
 
 /** A Google Doc's id from its id or link. */
 export function docIdOf(idOrUrl: string): string {
-  const m = /\/document\/d\/([A-Za-z0-9_-]+)/.exec(idOrUrl);
+  const m = /\/document\/(?:u\/\d+\/)?d\/([A-Za-z0-9_-]+)/.exec(idOrUrl);
   return m ? m[1] : idOrUrl.trim();
 }
 
@@ -188,4 +188,19 @@ export async function replaceDocText(idOrUrl: string, text: string): Promise<voi
   await call(`https://docs.googleapis.com/v1/documents/${encodeURIComponent(id)}:batchUpdate`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requests }),
   });
+}
+
+/** A Doc as a web page (Google's own export), for the readable copy in the Doc view. Scripts and frames are removed. */
+export async function readDocHtml(idOrUrl: string): Promise<string> {
+  const id = docIdOf(idOrUrl);
+  const html = await (await call(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}/export?mimeType=text/html`)).text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script, iframe, object, embed, link[rel="import"]').forEach((n) => n.remove());
+  doc.querySelectorAll('*').forEach((el) => {
+    for (const a of [...el.attributes]) if (/^on/i.test(a.name)) el.removeAttribute(a.name);
+  });
+  const base = doc.createElement('base');
+  base.setAttribute('target', '_blank');
+  doc.head.prepend(base);
+  return '<!doctype html>' + doc.documentElement.outerHTML;
 }

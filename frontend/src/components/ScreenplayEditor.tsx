@@ -253,6 +253,8 @@ import { reportSaveError } from '../stores/saveErrorStore';
 import { pluginRegistry } from '../plugins/registry';
 import { createTrackChangesPlugin, trackChangesPluginKey } from '../editor/trackChanges';
 import type { VersionInfo } from '../services/api';
+import DocView from './DocView';
+import { useDocView } from '../stores/docViewStore';
 
 
 /**
@@ -1156,6 +1158,8 @@ const ScreenplayEditor: React.FC = () => {
   pageLayoutRef.current = pageLayout;
   // Phone view: the same pages, reflowed to the screen (see ViewLayout).
   const phoneView = viewLayout === 'phone' || (foldState.foldable && foldState.fold === 'book');
+  // A Google Doc from the Navigator shows in place of the page (SwissCirkus fork, 2026-11-15).
+  const docShown = useDocView((st) => st.doc !== null);
   const phoneViewRef = useRef(phoneView);
   phoneViewRef.current = phoneView;
 
@@ -5959,7 +5963,10 @@ const ScreenplayEditor: React.FC = () => {
           ) : !isHistoryMode && beatBoardOpen ? (
             <BeatBoard editor={editor} />
           ) : (
-            <div className={`editor-main${phoneView ? ' phone-layout' : ''}`} ref={attachEditorMain} onDragOver={handleEditorDragOver} onDragLeave={handleEditorDragLeave} onDrop={handleEditorDrop}>
+            <>
+            {/* A Google Doc clicked in the Navigator shows here; the script stays loaded (hidden) underneath (2026-11-15). */}
+            <DocView />
+            <div className={`editor-main${phoneView ? ' phone-layout' : ''}`} style={docShown ? { display: 'none' } : undefined} ref={attachEditorMain} onDragOver={handleEditorDragOver} onDragLeave={handleEditorDragLeave} onDrop={handleEditorDrop}>
               <div
                 className="page-sizer"
                 style={phoneView ? {
@@ -6183,6 +6190,7 @@ const ScreenplayEditor: React.FC = () => {
               </div>
               </div>
             </div>
+            </>
           )}
           {/* Table Read docks over the bottom of the script it is reading. */}
           {storyTimelineOpen && editor && (

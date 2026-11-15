@@ -20,6 +20,7 @@ import { api, type ProjectInfo, type ScriptMeta } from '../services/api';
 import { useProjectStore } from '../stores/projectStore';
 import { leaveEditor, CLOSE_DELETED_DOCUMENT_EVENT } from '../services/pendingSave';
 import { addProjectLink, openLinkInNewTab, readProjectLink, type ProjectAsset } from '../services/projectLinks';
+import { useDocView } from '../stores/docViewStore';
 import {
   dragMayCarryLink, isLinkAsset, linkDisplayName, linkFromDataTransfer, linkIcon, linkKind, normalizeLinkUrl,
 } from '../utils/linkAssets';
@@ -616,7 +617,8 @@ const NavigatorProjects: React.FC = () => {
                             type="button"
                             className="nav-project-link-open"
                             disabled={!url}
-                            onClick={() => { if (url) openLinkInNewTab(url); }}
+                            // A Google Doc opens where the script is (Christian 2026-11-15); other links in a new tab.
+                            onClick={() => { if (!url) return; if (linkKind(url) === 'gdoc') useDocView.getState().show(url, linkDisplayName(asset)); else openLinkInNewTab(url); }}
                             title={url ? `${t('navigator.projects.openLink')}\n${url}` : t('navigator.projects.linkUnreadable')}
                           >
                             <span className="nav-project-icon" aria-hidden="true">{linkIcon(url ? linkKind(url) : 'web')}</span>
