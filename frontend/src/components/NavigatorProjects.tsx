@@ -609,7 +609,7 @@ const NavigatorProjects: React.FC = () => {
                         );
                       })}
 
-                      <div className="nav-project-section">{t('navigator.projects.links')}</div>
+                      {/* No heading over the Docs (Christian 2026-11-15: "just the Add Google Doc button is enough"). */}
                       {c.links.map(({ asset, url }) => (
                         <div key={asset.id} className="nav-project-item nav-project-link" onContextMenu={(e) => openMenu(e, linkItems(project.id, asset, url))}>
                           <button
@@ -721,9 +721,7 @@ const NavigatorProjects: React.FC = () => {
                         );
                       })()}
 
-                      <button type="button" className="nav-project-page" onClick={() => openProjectPage(project.id)}>
-                        {t('navigator.projects.openProject')}
-                      </button>
+                      {/* No "Open project page" link here (Christian 2026-11-15): right-click › Open project, or Manage Projects. */}
                     </>
                   )}
                 </div>
