@@ -190,6 +190,32 @@ const SCHEMA_SQL = `
     expires_at TEXT NOT NULL
   );
 
+  -- Shared scripts (SwissCirkus, 2026-11-16: "a bit more like Google Docs … invite somebody, and then the rest happens in the
+  -- background"): a script that lives here, shared with people by email, open live by anyone with access whenever they like.
+  CREATE TABLE IF NOT EXISTS shared_scripts (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    format TEXT NOT NULL DEFAULT 'screenplay',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS script_shares (
+    script_id TEXT NOT NULL REFERENCES shared_scripts(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'editor',
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (script_id, email)
+  );
+  -- The live text of a shared script (its Yjs state, base64): kept in the database, not a file — Cloud Run's disk is wiped.
+  CREATE TABLE IF NOT EXISTS shared_documents (
+    name TEXT PRIMARY KEY,
+    state TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_shared_scripts_owner ON shared_scripts(owner_id);
+  CREATE INDEX IF NOT EXISTS idx_script_shares_email ON script_shares(email);
+
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
   CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);

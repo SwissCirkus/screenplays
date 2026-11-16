@@ -30,6 +30,8 @@ import { checkSuggesterUpdate, suggesterIdOf, updateInMessage, SUGGESTION_REFUSE
 import authRoutes from './routes/auth';
 import collabRoutes from './routes/collab';
 import adminRoutes from './routes/admin';
+import sharedRoutes, { setCloseDocument } from './routes/shared';
+import * as Shared from './services/sharedScripts';
 import * as liveStats from './services/liveStats';
 import { standardLimiter } from './middleware/rateLimit';
 
@@ -124,6 +126,41 @@ const hocuspocus = new Hocuspocus({
 
     const rawToken = wireToken;
     const reviewCapable = supportsReview(wireToken);
+
+    /* A shared script (services/sharedScripts.ts, SwissCirkus 2026-11-16): no invite link — the person's own sign-in ("jwt:<access
+       token>") and the script's sharing decide. The owner and editors write, suggesters suggest, viewers only read. Anyone with
+       access opens it whenever they like; nobody hosts it. */
+    if (Shared.isSharedDoc(data.documentName)) {
+      const parts: Record<string, string> = {};
+      for (const segment of rawToken.split('|')) { const i = segment.indexOf(':'); if (i > 0) parts[segment.slice(0, i)] = segment.slice(i + 1); }
+      const signedIn = parts.jwt ? verifyAccessToken(parts.jwt) : null;
+      if (!signedIn) throw new Error('Sign in to open this shared script');
+      const scriptId = Shared.scriptIdOfDoc(data.documentName) as string;
+      const access = await Shared.accessOf(getDB(), scriptId, { id: signedIn.sub, email: signedIn.email });
+      if (!access) throw new Error("This script isn't shared with you");
+      const role = Shared.liveRole(access);
+      const userKey = signedIn.sub;
+      if (config.wsMaxConnectionsPerUser > 0 && (connectionsPerUser.get(userKey) || 0) >= config.wsMaxConnectionsPerUser) throw new Error('Too many connections for this user');
+      reviewGate.join(data.documentName, data.socketId, reviewCapable);
+      const releaseShared = () => reviewGate.leave(data.documentName, data.socketId);
+      data.request.socket.once('close', releaseShared);
+      try { const loaded = data.instance.documents.get(data.documentName); if (loaded) reviewGate.checkClient(reviewY, loaded, reviewCapable); }
+      catch (error) { releaseShared(); data.request.socket.off('close', releaseShared); throw error; }
+      incrementCounter(connectionsPerUser, userKey);
+      if (role === 'viewer') data.connectionConfig.readOnly = true;
+      const account = await getDB().get<{ display_name: string }>('SELECT display_name FROM users WHERE id = ?', [signedIn.sub]);
+      const name = (account && account.display_name) || signedIn.email;
+      data.context.user = {
+        id: signedIn.sub, email: signedIn.email, name, projectId: null, scriptId, role, reviewCapable, shared: true,
+        suggesterId: suggesterIdOf((text) => crypto.createHash('sha256').update(text).digest('hex'), 'user:' + signedIn.sub),
+        _connKey: userKey,
+      };
+      liveStats.addConnection({ socketId: data.socketId, userId: signedIn.sub, name, email: signedIn.email, role, document: data.documentName, projectId: '', scriptId,
+        ip: String(data.requestHeaders['x-forwarded-for'] || data.request.socket.remoteAddress || 'unknown').split(',')[0].trim(), since: Date.now() });
+      data.request.socket.once('close', () => liveStats.removeConnection(data.socketId));
+      await auditService.logEvent('connect', signedIn.sub, data.documentName, { name, role, shared: true });
+      return;
+    }
 
     let userId: string | null = null;
     let userEmail: string | null = null;
@@ -307,6 +344,16 @@ const hocuspocus = new Hocuspocus({
   },
 
   async onLoadDocument(data: onLoadDocumentPayload) {
+    // a shared script's text is kept in the database (it must outlive restarts: Cloud Run's disk is wiped)
+    if (Shared.isSharedDoc(data.documentName)) {
+      try {
+        const state = await Shared.loadState(getDB(), data.documentName);
+        if (state) Y.applyUpdate(data.document, state);
+        console.log(`Shared script loaded${state ? '' : ' (new, empty)'}: ${data.documentName}`);
+      } catch (err) { console.error(`Failed to load shared script ${data.documentName}:`, err); throw err; }
+      touchDocument(data.documentName);
+      return data.document;
+    }
     const filePath = findReviewStateFile(config.dataDir, path.basename(docPath(data.documentName)));
 
     if (filePath) {
@@ -328,6 +375,11 @@ const hocuspocus = new Hocuspocus({
   },
 
   async onStoreDocument(data: onStoreDocumentPayload) {
+    if (Shared.isSharedDoc(data.documentName)) {
+      try { await Shared.storeState(getDB(), data.documentName, Y.encodeStateAsUpdate(data.document)); }
+      catch (err) { console.error(`Failed to store shared script ${data.documentName}:`, err); }
+      return;
+    }
     const filePath = docPath(data.documentName);
 
     try {
@@ -415,6 +467,10 @@ app.use('/auth', authRoutes);
 // Used by both Tauri desktop/mobile clients and the web frontend.
 app.use('/api/collab', collabRoutes);
 
+// Shared scripts: share by email, open whenever, no host (routes/shared.ts)
+setCloseDocument((documentName) => { try { hocuspocus.closeConnections(documentName); } catch { /* not open */ } docLastActivity.delete(documentName); });
+app.use('/api/shared', sharedRoutes);
+
 // Health check with memory & connection stats
 app.get('/health', (_req, res) => {
   const mem = process.memoryUsage();
@@ -446,6 +502,8 @@ app.get('/health', (_req, res) => {
 // Reset a document's persisted Yjs state (called by host before starting a new collab session)
 app.post('/api/reset-document', async (req, res) => {
   const { documentName, token } = req.body;
+  // a shared script is never reset or closed from here — only its owner, through /api/shared
+  if (typeof documentName === 'string' && Shared.isSharedDoc(documentName)) { res.status(403).json({ error: 'Shared scripts are managed through /api/shared' }); return; }
   if (!documentName || !token) {
     res.status(400).json({ error: 'documentName and token are required' });
     return;
@@ -479,6 +537,8 @@ app.post('/api/reset-document', async (req, res) => {
 // Close all connections for a document (called by host after revoking all sessions)
 app.post('/api/close-document', async (req, res) => {
   const { documentName } = req.body;
+  // a shared script is never reset or closed from here — only its owner, through /api/shared
+  if (typeof documentName === 'string' && Shared.isSharedDoc(documentName)) { res.status(403).json({ error: 'Shared scripts are managed through /api/shared' }); return; }
   if (!documentName) {
     res.status(400).json({ error: 'documentName is required' });
     return;
