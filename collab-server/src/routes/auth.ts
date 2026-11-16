@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { OAuth2Client } from 'google-auth-library';
+import * as DriveTokens from '../services/driveTokens';
+import { driveGoogle } from './drive';
 import * as userService from '../services/userService';
 import type { UserRow } from '../db';
+import { getDB } from '../db';
 import * as tokenService from '../services/tokenService';
 import * as emailService from '../services/emailService';
 import * as auditService from '../services/auditService';
@@ -618,6 +621,37 @@ router.post('/google', strictLimiter, async (req, res) => {
   }
 });
 
+/* One-step Google sign-in (SwissCirkus 2026-11-16: "I shouldn't have to click connect to Google Drive … it just stays
+   connected"): one Google window that signs you in here AND connects your Drive for good. The writer sends Google's one-time code;
+   it is swapped for who you are (the id token) and the lasting Drive pass, which is kept (services/driveTokens.ts). */
+router.post('/google-code', strictLimiter, async (req, res) => {
+  try {
+    if (!config.googleClientId || !DriveTokens.available()) {
+      res.status(501).json({ error: 'One-step Google sign-in is not set up on this server' });
+      return;
+    }
+    const code = typeof req.body?.code === 'string' ? req.body.code : '';
+    if (!code || code.length > 2048) { res.status(400).json({ error: 'Invalid input' }); return; }
+    const g = driveGoogle();
+    const t = await g.exchange(code);
+    const who = t.id_token ? await g.identify(t.id_token) : null;
+    if (!who) { res.status(400).json({ error: 'Google did not say who signed in' }); return; }
+
+    const user = await userService.findOrCreateGoogleUser(who.sub, who.email, who.name || who.email.split('@')[0]);
+    const kept = await DriveTokens.keep(getDB(), user.id, t);
+    const accessToken = tokenService.generateAccessToken(user.id, user.email);
+    const { token: refreshToken } = await tokenService.generateRefreshToken(user.id, null);
+    await auditService.logEvent('google_login', user.id, null, { email: user.email, drive: kept.ok }, getClientIp(req));
+    res.json({
+      user: userResponse(user), accessToken, refreshToken,
+      drive: kept.ok ? { connected: true, access_token: kept.access_token, expires_in: kept.expires_in } : { connected: false, needsConsent: !!kept.needsConsent, error: kept.error },
+    });
+  } catch (err) {
+    console.error('Google code sign-in error:', err);
+    res.status(401).json({ error: 'Google authentication failed' });
+  }
+});
+
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const user = await userService.findUserById(req.user!.id);
@@ -638,6 +672,8 @@ router.get('/config', (req, res) => {
     googleEnabled: Boolean(config.googleClientId),
     // The public client id, so the web app's Sign in with Google uses the same client this server verifies.
     googleClientId: config.googleClientId || '',
+    // One Google window signs in and keeps Drive connected (POST /auth/google-code) — needs the client secret and DRIVE_TOKEN_KEY.
+    googleStayConnected: Boolean(config.googleClientId) && DriveTokens.available(),
     emailVerificationRequired: Boolean(config.smtpHost),
     // Whether outbound email is wired up. UI gates 2FA on this — without
     // SMTP, the new-device code can't be delivered, so enabling it would

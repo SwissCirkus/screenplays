@@ -90,7 +90,6 @@ import { INDUSTRY_STANDARD_ID } from '../stores/formattingTypes';
 import { getCurrentElementRule, getLockedFormatting } from '../utils/effectiveFormatting';
 import { selectionStartsNewPage } from '../editor/extensions';
 import { pluginRegistry, resolvePluginText } from '../plugins/registry';
-import { PLUGIN_PANEL_OPEN_EVENT } from './PluginPanelTabs';
 import { useTableReadStore } from '../stores/tableReadStore';
 import { isAiProviderConfigured, useVoiceSettingsStore } from '../stores/voiceSettingsStore';
 import { activeEngineKind } from '../services/tts/engines';
@@ -149,6 +148,7 @@ import {
 } from '../utils/fileOps';
 import { isDesktopTauri, isWeb, browserLibrary, printRoute, supportsApplePencil, supportsMultipleWindows } from '../services/platform';
 import DriveIndicator from './DriveIndicator';
+import { connectDrive, useDriveStatus, driveMenuLabel } from '../services/driveSync';
 import { collabServerHttp } from '../config';
 import { checkForUpdate } from '../services/updateCheck';
 import { getCompatEntries } from '../services/compat';
@@ -222,7 +222,6 @@ import {
   FaFilm,
   FaBoxes,
   FaBars,
-  FaMagic,
   FaGlobe,
   FaInfoCircle,
   FaBook,
@@ -2752,6 +2751,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
   /* File › Backup (browser build, SwissCirkus 2026-11-16): every project, script and saved version in one zip, into the folder
      you chose (services/fullBackup.ts). */
   const [webBackupFolder, setWebBackupFolder] = useState<string | null>(null);
+  const driveState = useDriveStatus((s) => s.state); // Tools › Google Drive
   useEffect(() => { if (!backupsSupported() && canPickFolder()) void backupFolderName().then(setWebBackupFolder); }, []);
   const handleWebBackup = useCallback(async () => {
     try {
@@ -3695,6 +3695,12 @@ const MenuBar: React.FC<MenuBarProps> = ({
         { icon: <FaUserEdit />, label: t('menu:tools.reviewSuggestions'), action: () => useSuggestModeStore.getState().setPanelOpen(true) },
         { separator: true, label: '' },
         { icon: <FaProjectDiagram />, label: t('menu:tools.manageProjects'), action: goToProjects, disabled: isCollabGuest },
+        // Web build (2026-11-16): Google Drive moved off the top bar — connected once at sign-in, and here
+        ...(browserLibrary() && collabServerHttp() ? [{
+          icon: <FaGoogleDrive />, label: driveMenuLabel(driveState), action: () => { void connectDrive(); }, // i18n-ignore: SwissCirkus
+          disabled: driveState === 'synced' || driveState === 'saving' || driveState === 'connecting',
+          title: driveState === 'synced' ? 'Your scripts are kept in your Google Drive, in the Screenplays folder' : 'Keep your scripts in your Google Drive, in a Screenplays folder — you only connect once', // i18n-ignore: SwissCirkus
+        }] : []),
         // SwissCirkus (Christian 2026-11-15): talk, and each sentence is added to a Google Doc.
         ...(browserLibrary() ? [{ icon: <FaMicrophoneAlt />, label: 'Voice notes into a Google Doc…', action: () => useVoiceNotes.getState().setOpen(true) }] : []), // i18n-ignore: SwissCirkus
         { icon: <FaBoxes />, label: t('menu:tools.assetManager'), action: () => useAssetStore.getState().toggleAssetManager() },
@@ -4287,22 +4293,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
       {!docked
         ? <div className="menu-spacer" />
         : <div className="menu-spacer menu-toolbar-slot" ref={setToolbarSlot} />}
-      {/* Script Assistant (SwissCirkus fork): one click to the panel on the right, while the add-on is on. By id
-          and event only — the menu bar never reaches into an add-on (addons/boundary.test.ts). */}
-      {pluginRegistry.isActive('script-assistant') && (
-        <button
-          type="button"
-          className="menu-assistant-btn"
-          title={t('addons:scriptAssistant.plugin.panel')}
-          onMouseDown={keepEditorSelection}
-          onClick={() => {
-            setActiveMenu(null);
-            document.dispatchEvent(new CustomEvent(PLUGIN_PANEL_OPEN_EVENT, { detail: { panelId: 'script-assistant-panel' } }));
-          }}
-        >
-          <FaMagic /> <span className="menu-assistant-label">{t('addons:scriptAssistant.button')}</span>
-        </button>
-      )}
+      {/* The Script Assistant opens from its tab on the right (Christian 2026-11-16: the top button went — one way in is enough). */}
       {/* Collaborate (SwissCirkus, Christian 2026-11-16: "make collaborate button in the toolbar"): the same as Tools › Collaborate —
           invite people to write with you (links last 7 days, Co-Edit, unless you choose otherwise). Lit while a session runs. */}
       {onCollaborate && !isCollabGuest && (
@@ -4329,7 +4320,9 @@ const MenuBar: React.FC<MenuBarProps> = ({
           <FaGlobe />
         </button>
       )}
-      {browserLibrary() ? <>{collabServerHttp() && <AuthIndicator />}<DriveIndicator /></> : <AuthIndicator />}
+      {/* Web build (Christian 2026-11-16: "just have share and signed in as … a round circle, just a CG"): your initials in a
+          circle, with Drive in its menu; without the co-writing server, the Drive button as before. */}
+      {browserLibrary() ? (collabServerHttp() ? <AuthIndicator compact /> : <DriveIndicator />) : <AuthIndicator />}
     </>
   );
 

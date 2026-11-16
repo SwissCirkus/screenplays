@@ -30,6 +30,9 @@ import {
   type AssetMeta,
 } from './web-storage';
 import type { ScriptMeta } from './api';
+import { collabServerHttp } from '../config';
+import { useSettingsStore } from '../stores/settingsStore';
+import { ensureCollabAuthenticated, handleAuthResponse, type AuthResponse } from './collabAuth';
 
 export const GOOGLE_CLIENT_ID = '137075271992-st7deo4q3m0pptfo02ep31638bj07tor.apps.googleusercontent.com'; // same client as Schedule
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -639,7 +642,18 @@ function keepToken() {
   try { localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: accessToken, expiry: tokenExpiry })); } catch { /* ignore */ }
   clearTimeout(renewTimer);
   const wait = tokenExpiry - Date.now() - 60000;
-  if (wait > 0) renewTimer = setTimeout(() => { void signInToDrive().catch(() => { /* the indicator offers Connect */ }); }, wait);
+  if (wait > 0) renewTimer = setTimeout(() => { void renewQuietly(); }, wait);
+}
+/** A fresh Drive pass without asking: from the co-writing server when it keeps one for you, else Google's quiet renew. */
+async function renewQuietly(): Promise<boolean> {
+  if (await passFromServer()) return true;
+  try { await signInToDrive(); return true; } catch { return false; } // the indicator offers Connect
+}
+function setDriveToken(token: string, expiresIn: number) {
+  accessToken = token;
+  tokenExpiry = Date.now() + (Number(expiresIn || 3600) - 60) * 1000;
+  try { localStorage.setItem(CONNECTED_FLAG, '1'); } catch { /* ignore */ }
+  keepToken();
 }
 
 export function currentDriveToken(): string | null {
@@ -693,9 +707,9 @@ export function appDriveSync(): DriveSync | null { return appSync; }
 
 /** At start: connected before → use the kept token, or reconnect quietly; nothing to do for someone who never connected. */
 export async function resumeDrive(): Promise<boolean> {
-  if (!appSync || !wasConnectedBefore()) return false;
+  if (!appSync || (!wasConnectedBefore() && !signedInHere())) return false;
   try {
-    if (!currentDriveToken()) await signInToDrive();
+    if (!currentDriveToken()) { if (!await renewQuietly()) throw new Error('not connected'); }
     else keepToken();
     await appSync.connect();
     return true;
@@ -707,9 +721,108 @@ export async function connectDrive(): Promise<void> {
   if (!appSync) return;
   try {
     useDriveStatus.getState().set({ state: 'connecting', message: '' });
-    await signInToDrive();
+    if (await checkOneStep()) await signInWithGoogle(); // one Google window: signed in, and Drive connected for good
+    else await signInToDrive();
     await appSync.connect();
   } catch (e) {
     useDriveStatus.getState().set({ state: 'ready', message: e instanceof Error ? e.message : String(e) });
   }
+}
+
+/* ── Stay connected, for good (Christian 2026-11-16: "I shouldn't have to click connect to Google Drive … Once I'm connected, it
+   just stays connected") ──
+   Google's browser-only pass lasts an hour, and its quiet renew needs a pop-up the browser blocks. So where the co-writing server
+   is set up, signing in is ONE Google window: it signs you in there (Share, your initials at the top) and hands the server Google's
+   one-time code, which the server swaps for a lasting Drive pass and keeps, encrypted (collab-server/src/services/driveTokens.ts).
+   From then on a fresh one-hour pass comes from the server whenever one is needed — at start, before the hour is up, when the tab
+   comes back, and when Drive says the pass has run out. */
+const FORCE_CONSENT = 'screenplays:driveConsentNext';
+const SIGNIN_SCOPES = `openid email profile ${DRIVE_SCOPE}`;
+let fetchServer: typeof fetch = (...a) => fetch(...a);
+/** Tests: a fake co-writing server and a fake Google sign-in. */
+export function _setDriveServerTestHooks(h: { fetch?: typeof fetch; gsi?: any }) {
+  if (h.fetch) fetchServer = h.fetch;
+  if (h.gsi) (window as any).google = h.gsi;
+}
+
+/** Tools › Google Drive and the initials menu: where Drive stands, in a few words. */
+export function driveMenuLabel(state: DriveState): string {
+  return state === 'synced' ? 'Google Drive: saved'
+    : state === 'saving' ? 'Google Drive: saving…'
+    : state === 'connecting' ? 'Google Drive: connecting…'
+    : state === 'expired' ? 'Reconnect Google Drive'
+    : state === 'error' ? 'Google Drive: problem — try again'
+    : 'Connect Google Drive…';
+}
+
+/** Signing in is one Google window (the co-writing server keeps Drive connected) — once the server says it can (/auth/config). */
+let stayConnectedOnServer: boolean | null = null;
+export const oneStepSignIn = () => !!collabServerHttp() && stayConnectedOnServer !== false;
+/** Ask the co-writing server once whether it keeps Drive connected (a server without the Google secret yet: the old way). */
+export async function checkOneStep(): Promise<boolean> {
+  if (!collabServerHttp()) return false;
+  if (stayConnectedOnServer === null) {
+    try {
+      const r = await fetchServer(`${collabServerHttp()}/auth/config`);
+      stayConnectedOnServer = r.ok ? !!((await r.json()) as { googleStayConnected?: boolean }).googleStayConnected : false;
+    } catch { return false; } // unreachable now — ask again next time
+  }
+  return stayConnectedOnServer;
+}
+const signedInHere = () => { const a = useSettingsStore.getState().collabAuth; return !!(a.accessToken || a.refreshToken); };
+
+/** A fresh one-hour Drive pass from the co-writing server, if it keeps one for you. Never asks anything. */
+export async function passFromServer(): Promise<boolean> {
+  if (!oneStepSignIn() || !signedInHere()) return false;
+  try {
+    if (await ensureCollabAuthenticated() !== 'ok') return false;
+    const r = await fetchServer(`${collabServerHttp()}/api/drive/token`, { method: 'POST', headers: { authorization: `Bearer ${useSettingsStore.getState().collabAuth.accessToken}` } });
+    if (!r.ok) return false; // 409: not kept (or Google ended it) — the indicator offers Sign in
+    const j = (await r.json()) as { access_token?: string; expires_in?: number };
+    if (!j.access_token) return false;
+    setDriveToken(j.access_token, j.expires_in || 3600);
+    return true;
+  } catch { return false; }
+}
+
+/** Must run from a click: one Google window — signed in to co-writing, and Drive connected for good. */
+export async function signInWithGoogle(): Promise<void> {
+  await loadGsi();
+  const g = (window as any).google;
+  let consent = false;
+  try { consent = !wasConnectedBefore() || localStorage.getItem(FORCE_CONSENT) === '1'; } catch { /* ignore */ }
+  const code = await new Promise<string>((resolve, reject) => {
+    const client = g.accounts.oauth2.initCodeClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: SIGNIN_SCOPES,
+      ux_mode: 'popup',
+      ...(consent ? { prompt: 'consent' } : {}), // the first time: Google's consent screen, which always gives the lasting pass
+      callback: (res: any) => { if (res.error || !res.code) reject(new Error(res.error_description || res.error || 'Google gave no code')); else resolve(res.code); },
+      error_callback: (err: any) => reject(new Error(err?.message || 'Sign-in was closed')),
+    });
+    client.requestCode();
+  });
+  const r = await fetchServer(`${collabServerHttp()}/auth/google-code`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) });
+  const j = (await r.json().catch(() => ({}))) as AuthResponse & { error?: string; drive?: { connected: boolean; access_token?: string; expires_in?: number; needsConsent?: boolean; error?: string } };
+  if (!r.ok) throw new Error(j.error || `The co-writing server answered ${r.status}`);
+  handleAuthResponse(j);
+  try { localStorage.removeItem(FORCE_CONSENT); } catch { /* ignore */ }
+  if (j.drive?.connected && j.drive.access_token) { setDriveToken(j.drive.access_token, j.drive.expires_in || 3600); return; }
+  if (j.drive?.connected && await passFromServer()) return;
+  if (j.drive?.needsConsent) { try { localStorage.setItem(FORCE_CONSENT, '1'); } catch { /* ignore */ } }
+  throw new Error(j.drive?.needsConsent ? "You're signed in — press Sign in once more to finish connecting Google Drive" : (j.drive?.error || "Google Drive didn't connect"));
+}
+
+/* Renew when it matters: the tab comes back (timers sleep in background tabs), or Drive said the pass ran out. */
+let lastExpiredTry = 0;
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !appSync || !wasConnectedBefore()) return;
+    if (tokenExpiry - Date.now() < 120000) void renewQuietly().then((ok) => { if (ok) void appSync?.connect(); });
+  });
+  useDriveStatus.subscribe((st) => {
+    if (st.state !== 'expired' || !appSync || Date.now() - lastExpiredTry < 60000) return;
+    lastExpiredTry = Date.now();
+    void passFromServer().then((ok) => { if (ok) void appSync?.connect(); });
+  });
 }

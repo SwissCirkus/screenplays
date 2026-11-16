@@ -213,6 +213,15 @@ const SCHEMA_SQL = `
     state TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+  -- Stay connected to Google Drive (SwissCirkus, 2026-11-16: "Once I'm connected, it just stays connected"): each person's
+  -- long-lasting Google Drive pass, encrypted (services/driveTokens.ts); the writer asks for a fresh one-hour pass from it.
+  CREATE TABLE IF NOT EXISTS drive_tokens (
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    refresh_enc TEXT NOT NULL,
+    scope TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
   CREATE INDEX IF NOT EXISTS idx_shared_scripts_owner ON shared_scripts(owner_id);
   CREATE INDEX IF NOT EXISTS idx_script_shares_email ON script_shares(email);
 

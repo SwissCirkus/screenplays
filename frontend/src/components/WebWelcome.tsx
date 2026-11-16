@@ -91,7 +91,7 @@ const WebWelcome: React.FC = () => {
 
       {stage === 'signin' ? (
         <div className="ww-card">
-          <p>Sign in with Google to keep your scripts in your own Google Drive, so they&apos;re safe and on every computer you use. Only you can see them.</p>
+          <p>Sign in with Google to keep your scripts in your own Google Drive, so they&apos;re safe and on every computer you use, and to share them with the people you write with. You only do this once.</p>
           <button type="button" className="ww-google" onClick={() => void signIn()} disabled={busy}>
             <FaGoogle /> {busy ? 'Signing in…' : 'Sign in with Google'}
           </button>
@@ -99,7 +99,7 @@ const WebWelcome: React.FC = () => {
           <button type="button" className="ww-skip" onClick={() => void finish()} disabled={busy}>
             Not now
           </button>
-          <div className="ww-skip-note">Without signing in, your scripts stay in this browser only. You can sign in later with the Drive button at the top right.</div>
+          <div className="ww-skip-note">Without signing in, your scripts stay in this browser only. You can sign in later with Sign in at the top right.</div>
         </div>
       ) : (
         <div className="ww-spinner" aria-hidden="true" />

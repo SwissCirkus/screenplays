@@ -15774,3 +15774,13 @@ html.foldable.wide .fold-panel-content .plugin-panel-tabs__content { flex: 1; wi
 .collab-gmail-link { background: none; border: 0; padding: 0; color: var(--fd-accent); cursor: pointer; font-size: 12.5px; text-decoration: underline; }
 .collab-gmail-link:disabled { opacity: .6; cursor: default; }
 .collab-gmail-problem { color: #ff9b8a; }
+
+/* Web build (2026-11-16): the top bar keeps just Share and your initials in a circle */
+.auth-indicator--compact { padding: 0; border: none; border-radius: 50%; position: relative; background: transparent; }
+.auth-indicator--compact .auth-indicator__avatar { width: 26px; height: 26px; font-size: 11px; letter-spacing: .02em; }
+.auth-indicator--compact:hover .auth-indicator__avatar, .auth-indicator--compact:focus-visible .auth-indicator__avatar { box-shadow: 0 0 0 2px var(--fd-border, rgba(255,255,255,.25)); }
+.auth-indicator__dot { position: absolute; right: -1px; top: -1px; width: 8px; height: 8px; border-radius: 50%; background: #e0a030; box-shadow: 0 0 0 2px var(--fd-bg, #1e1e1e); }
+.auth-indicator--compact-signin { padding: 3px 12px; }
+.auth-indicator__menu-who { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px 6px; font-size: 12.5px; border-bottom: 1px solid var(--fd-border, rgba(255,255,255,.12)); margin-bottom: 4px; }
+.auth-indicator__menu-who span { color: var(--fd-text-muted, #aaa); font-size: 11.5px; }
+.auth-indicator__menu-item:disabled { opacity: .7; cursor: default; }

@@ -20,8 +20,24 @@ import { performLogout, useSigningOut } from '../services/collabAuth';
 import { showToast } from './Toast';
 import CollabLoginDialog from './CollabLoginDialog';
 import { browserLibrary } from '../services/platform';
+import { FaGoogleDrive } from 'react-icons/fa';
+import { connectDrive, useDriveStatus, driveMenuLabel } from '../services/driveSync';
 
-const AuthIndicator: React.FC = () => {
+/** "Christian Greet" → "CG"; "marshall@example.com" → "M". */
+export function initialsOf(name: string | null | undefined, email?: string | null): string {
+  const words = String(name || '').trim().split(/\s+/).filter((w) => /\p{L}|\p{N}/u.test(w));
+  if (words.length >= 2) return (Array.from(words[0])[0] + Array.from(words[words.length - 1])[0]).toUpperCase();
+  if (words.length === 1) return Array.from(words[0])[0].toUpperCase();
+  return (Array.from(String(email || '?'))[0] || '?').toUpperCase();
+}
+
+/**
+ * compact (web build with the co-writing server, Christian 2026-11-16: "just have share and signed in as … a round circle, just a
+ * CG for me"): your initials in a circle, name and Google Drive in its menu. Signed out: a small Sign in that opens the one
+ * Google window (signed in, and Drive connected for good — services/driveSync.ts signInWithGoogle).
+ */
+const AuthIndicator: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
+  const drive = useDriveStatus();
   const { t } = useTranslation('collab');
   const collabAuth = useSettingsStore((s) => s.collabAuth);
   const authVerified = useSettingsStore((s) => s.authVerified);
@@ -77,6 +93,20 @@ const AuthIndicator: React.FC = () => {
     return () => document.removeEventListener('pointerdown', handler);
   }, [menuOpen]);
 
+  if (!signedIn && compact) {
+    const busy = drive.state === 'connecting';
+    return (
+      <button
+        type="button"
+        className="auth-indicator auth-indicator--local auth-indicator--compact-signin"
+        onClick={() => { if (!busy) void connectDrive(); }}
+        title={drive.message || 'Sign in with Google: write together, share scripts, and keep them in your Google Drive'} // i18n-ignore: SwissCirkus
+      >
+        {busy ? 'Signing in…' : 'Sign in'}
+      </button>
+    );
+  }
+
   if (!signedIn) {
     return (
       <>
@@ -111,20 +141,23 @@ const AuthIndicator: React.FC = () => {
     );
   }
 
-  const initial = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+  const initial = compact ? initialsOf(user.displayName, user.email) : (user.displayName || user.email || '?').charAt(0).toUpperCase();
+  const driveOk = drive.state === 'synced' || drive.state === 'saving' || drive.state === 'connecting';
 
   return (
     <div className="auth-indicator-wrap" style={{ position: 'relative' }}>
       <button
         ref={buttonRef}
         type="button"
-        className={`auth-indicator auth-indicator--signed-in ${user.emailVerified ? '' : 'auth-indicator--unverified'}`}
+        className={`auth-indicator auth-indicator--signed-in ${user.emailVerified ? '' : 'auth-indicator--unverified'}${compact ? ' auth-indicator--compact' : ''}`}
         onClick={() => setMenuOpen((v) => !v)}
-        title={user.emailVerified ? t('auth.signedInAs', { name: user.displayName }) : t('auth.unverifiedTitle')}
+        title={compact ? `${user.displayName || user.email} · ${driveMenuLabel(drive.state)}` : user.emailVerified ? t('auth.signedInAs', { name: user.displayName }) : t('auth.unverifiedTitle')}
+        aria-label={compact ? `Signed in as ${user.displayName || user.email}` : undefined} // i18n-ignore: SwissCirkus
       >
         <span className="auth-indicator__avatar" aria-hidden="true">{initial}</span>
-        <span className="auth-indicator__name">{user.displayName || user.email}</span>
-        {!user.emailVerified && <span className="auth-indicator__badge">{t('auth.verifyBadge')}</span>}
+        {compact && !driveOk && <span className="auth-indicator__dot" aria-hidden="true" />}
+        {!compact && <span className="auth-indicator__name">{user.displayName || user.email}</span>}
+        {!compact && !user.emailVerified && <span className="auth-indicator__badge">{t('auth.verifyBadge')}</span>}
       </button>
       {menuOpen && menuRect && createPortal(
         <div
@@ -133,6 +166,23 @@ const AuthIndicator: React.FC = () => {
           role="menu"
           style={{ position: 'fixed', top: menuRect.top, right: menuRect.right }}
         >
+          {compact && (
+            <>
+              <div className="auth-indicator__menu-who">
+                <b>{user.displayName || user.email}</b>
+                {user.displayName && <span>{user.email}</span>}
+              </div>
+              <button
+                type="button"
+                className="auth-indicator__menu-item"
+                disabled={driveOk}
+                onClick={() => { setMenuOpen(false); void connectDrive(); }}
+                title={drive.message || (driveOk ? 'Your scripts are kept in your Google Drive, in the Screenplays folder' : 'Keep your scripts in your Google Drive — you only connect once')} // i18n-ignore: SwissCirkus
+              >
+                <FaGoogleDrive /> {driveMenuLabel(drive.state)}
+              </button>
+            </>
+          )}
           <button
             type="button"
             className="auth-indicator__menu-item"

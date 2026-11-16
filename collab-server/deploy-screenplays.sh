@@ -60,11 +60,25 @@ if ! gcloud secrets describe screenplays-jwt-secret >/dev/null 2>&1; then
   secret_put screenplays-jwt-secret "$(openssl rand -hex 32)"   # made once: changing it signs everyone out
 fi
 secret_put screenplays-db-password "$DB_PASSWORD"
+# Stay connected to Google Drive (services/driveTokens.ts): the key the kept Drive passes are encrypted with — made once
+# (changing it means everyone connects Drive once more). The Google sign-in client's secret is put in by hand, once:
+# set-google-client-secret.ps1 (it is never typed into this script). Without it, Drive works as before (an hour at a time).
+if ! gcloud secrets describe screenplays-drive-token-key >/dev/null 2>&1; then
+  secret_put screenplays-drive-token-key "$(openssl rand -hex 32)"
+fi
+SECRETS="JWT_SECRET=screenplays-jwt-secret:latest,DB_PASSWORD=screenplays-db-password:latest,DRIVE_TOKEN_KEY=screenplays-drive-token-key:latest"
+SECRET_NAMES="screenplays-jwt-secret screenplays-db-password screenplays-drive-token-key"
+if gcloud secrets describe screenplays-google-client-secret >/dev/null 2>&1; then
+  SECRETS="$SECRETS,GOOGLE_CLIENT_SECRET=screenplays-google-client-secret:latest"
+  SECRET_NAMES="$SECRET_NAMES screenplays-google-client-secret"
+else
+  echo "Note: no screenplays-google-client-secret yet — Drive won't stay connected until it's added (set-google-client-secret.ps1)"
+fi
 
-# Cloud Run's service account reads the two secrets
+# Cloud Run's service account reads the secrets
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
 RUNNER="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
-for s in screenplays-jwt-secret screenplays-db-password; do
+for s in $SECRET_NAMES; do
   gcloud secrets add-iam-policy-binding "$s" --member="serviceAccount:$RUNNER" --role=roles/secretmanager.secretAccessor --quiet >/dev/null
 done
 
@@ -83,7 +97,7 @@ gcloud run deploy "$SERVICE" \
   --port=8080 --memory=512Mi --cpu=1 --min-instances=0 --max-instances=1 \
   --timeout=3600 --session-affinity \
   --set-env-vars="$ENV_VARS" \
-  --set-secrets="JWT_SECRET=screenplays-jwt-secret:latest,DB_PASSWORD=screenplays-db-password:latest" \
+  --set-secrets="$SECRETS" \
   --quiet
 
 URL="$(gcloud run services describe "$SERVICE" --region="$REGION" --format='value(status.url)')"

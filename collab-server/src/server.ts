@@ -31,6 +31,7 @@ import authRoutes from './routes/auth';
 import collabRoutes from './routes/collab';
 import adminRoutes from './routes/admin';
 import sharedRoutes, { setCloseDocument } from './routes/shared';
+import driveRoutes from './routes/drive';
 import * as Shared from './services/sharedScripts';
 import * as liveStats from './services/liveStats';
 import { standardLimiter } from './middleware/rateLimit';
@@ -470,6 +471,7 @@ app.use('/api/collab', collabRoutes);
 // Shared scripts: share by email, open whenever, no host (routes/shared.ts)
 setCloseDocument((documentName) => { try { hocuspocus.closeConnections(documentName); } catch { /* not open */ } docLastActivity.delete(documentName); });
 app.use('/api/shared', sharedRoutes);
+app.use('/api/drive', driveRoutes); // stay connected to Google Drive (services/driveTokens.ts)
 
 // Health check with memory & connection stats
 app.get('/health', (_req, res) => {
