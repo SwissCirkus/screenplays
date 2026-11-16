@@ -24,7 +24,7 @@ describe('the top bar: Share and your initials', () => {
     expect(m.includes("icon: <FaGoogleDrive />, label: driveMenuLabel(driveState), action: () => { void connectDrive(); }")).toBe(true);
     const a = src('./AuthIndicator.tsx');
     expect(a.includes("{compact && !driveOk && <span className=\"auth-indicator__dot\" aria-hidden=\"true\" />}")).toBe(true);
-    expect(a.includes("onClick={() => { if (!busy) void connectDrive(); }}")).toBe(true); // Sign in = the one Google window
+    expect(a.includes("const signInNow = async () => { if (busy) return; if (await checkOneStep()) void connectDrive(); else setLoginOpen(true); };")).toBe(true); // Sign in = the one Google window
     expect(driveMenuLabel('synced')).toBe('Google Drive: saved');
     expect(driveMenuLabel('ready')).toBe('Connect Google Drive…');
   });

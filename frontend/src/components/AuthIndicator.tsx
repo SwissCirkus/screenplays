@@ -21,7 +21,7 @@ import { showToast } from './Toast';
 import CollabLoginDialog from './CollabLoginDialog';
 import { browserLibrary } from '../services/platform';
 import { FaGoogleDrive } from 'react-icons/fa';
-import { connectDrive, useDriveStatus, driveMenuLabel } from '../services/driveSync';
+import { connectDrive, useDriveStatus, driveMenuLabel, checkOneStep } from '../services/driveSync';
 
 /** "Christian Greet" → "CG"; "marshall@example.com" → "M". */
 export function initialsOf(name: string | null | undefined, email?: string | null): string {
@@ -95,15 +95,20 @@ const AuthIndicator: React.FC<{ compact?: boolean }> = ({ compact = false }) => 
 
   if (!signedIn && compact) {
     const busy = drive.state === 'connecting';
+    // the one Google window — or, on a server that can't keep Drive connected yet, the usual co-writing sign-in
+    const signInNow = async () => { if (busy) return; if (await checkOneStep()) void connectDrive(); else setLoginOpen(true); };
     return (
+      <>
       <button
         type="button"
         className="auth-indicator auth-indicator--local auth-indicator--compact-signin"
-        onClick={() => { if (!busy) void connectDrive(); }}
+        onClick={() => { void signInNow(); }}
         title={drive.message || 'Sign in with Google: write together, share scripts, and keep them in your Google Drive'} // i18n-ignore: SwissCirkus
       >
         {busy ? 'Signing in…' : 'Sign in'}
       </button>
+      {loginOpen && <CollabLoginDialog onClose={() => setLoginOpen(false)} onSuccess={() => setLoginOpen(false)} />}
+      </>
     );
   }
 
