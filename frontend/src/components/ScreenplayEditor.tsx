@@ -209,6 +209,7 @@ function sayCannotBeSuggested(what: 'formatting' | 'lineBreak' | 'alternates' | 
 import VersionHistory from './VersionHistory';
 import AssetManager from './AssetManager';
 import { useParams, useNavigate } from 'react-router-dom';
+import { scriptRoute } from '../utils/projectRoutes';
 import { useGoBack, useGoBackTo } from '../hooks/useGoBack';
 import { setPendingSaveFlush, leaveEditor as leaveEditorScreen } from '../services/pendingSave';
 import OpenFile from './OpenFile';
@@ -2596,7 +2597,10 @@ const ScreenplayEditor: React.FC = () => {
   const writingGoalsOpen = useWritingGoalsStore((s) => s.dialogOpen);
 
   // ── Owner starts collaboration — save current content, create own token, switch to collab mode ──
-  const handleStartCollab = useCallback(async (guestSession: import('../services/api').CollabSession) => {
+  // scriptIdOverride: the "(collab)" copy the Collaborate window just made and switched to — this callback was handed over before
+  // the switch, so it would otherwise still name the original.
+  const handleStartCollab = useCallback(async (guestSession: import('../services/api').CollabSession, scriptIdOverride?: string) => {
+    const currentScriptId = scriptIdOverride || useProjectStore.getState().currentScriptId;
     if (!editor || !currentProject || !currentScriptId) return;
 
     // Save current editor content so it can seed the Yjs doc
@@ -5778,6 +5782,27 @@ const ScreenplayEditor: React.FC = () => {
     }
     await openShareDialog();
   }, [currentProject, currentScriptId, openShareDialog]);
+  /* Collaborate on a copy (SwissCirkus, Christian 2026-11-16: "when I invite somebody … make a copy immediately in the project of
+     that script … and add the collab behind the script name"): the first invite saves the original as it is, makes
+     "<title> (collab)" in the same project from what's on screen, and switches to it — you and your guest write in the copy and
+     the original stays as it was. Already in a "(collab)" script: no second copy. → the script id to collaborate on, or null. */
+  const makeCollabCopy = useCallback(async (): Promise<string | null> => {
+    const pid = currentProject?.id, sid = useProjectStore.getState().currentScriptId;
+    if (!pid || !sid) return null;
+    const title = useEditorStore.getState().documentTitle || 'Untitled';
+    if (/\(collab\)\s*$/i.test(title)) return sid;
+    const content = buildSaveContent();
+    if (!content) return null;
+    try { await api.saveScript(pid, sid, { content }); } catch { /* the copy still has what's on screen */ }
+    let format: string | undefined;
+    try { format = (await api.getScript(pid, sid)).meta.format; } catch { format = undefined; }
+    const made = await api.createScript(pid, { title: `${title} (collab)`, content, format });
+    setCurrentScriptId(made.meta.id);
+    useEditorStore.getState().setDocumentTitle(made.meta.title);
+    window.history.replaceState(null, '', import.meta.env.BASE_URL.replace(/\/$/, '') + scriptRoute(pid, made.meta));
+    window.dispatchEvent(new CustomEvent('screenplays:library-changed'));
+    return made.meta.id;
+  }, [currentProject, buildSaveContent, setCurrentScriptId]);
   const handleDocumentSaved = useCallback((json: string) => { lastSavedJsonRef.current = json; }, []);
   const openJoinCollab = useCallback(() => setJoinCollabOpen(true), []);
   const navStyle = useMemo(() => ({ width: effectiveNavWidth, minWidth: effectiveNavWidth }), [effectiveNavWidth]);
@@ -6419,6 +6444,7 @@ const ScreenplayEditor: React.FC = () => {
           scriptTitle={useEditorStore.getState().documentTitle}
           isCollabActive={collabMode}
           onStartCollab={handleStartCollab}
+          onMakeCopy={makeCollabCopy}
           onClose={() => setShareDialogOpen(false)}
         />
       )}

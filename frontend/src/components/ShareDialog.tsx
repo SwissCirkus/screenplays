@@ -19,7 +19,9 @@ interface ShareDialogProps {
   scriptId: string;
   scriptTitle: string;
   isCollabActive: boolean;
-  onStartCollab: (session: CollabSession) => void;
+  onStartCollab: (session: CollabSession, scriptId?: string) => void;
+  /** First invite: make "<title> (collab)" and switch to it (ScreenplayEditor.makeCollabCopy) → the script to invite to. */
+  onMakeCopy?: () => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -62,6 +64,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
   scriptTitle,
   isCollabActive,
   onStartCollab,
+  onMakeCopy,
   onClose,
 }) => {
   const { t } = useTranslation(['collab', 'common']);
@@ -130,9 +133,16 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
         return;
       }
 
+      // The first invite of a new session: the writing moves to a "(collab)" copy of the script (the original stays as it was)
+      let sid = scriptId;
+      if (!isCollabActive && sessions.length === 0 && onMakeCopy) {
+        const copy = await onMakeCopy();
+        if (!copy) { showToast("Couldn't make the collab copy of this script — nothing was shared", 'error'); setGenerating(false); return; } // i18n-ignore: SwissCirkus
+        sid = copy;
+      }
       // Reuse the session nonce from the first invite so all guests join the same Yjs room
       const existingNonce = sessions.length > 0 ? sessions[0].session_nonce || '' : '';
-      const session = await api.createCollabInvite(projectId, scriptId, trimmed, role, expiryHours, existingNonce);
+      const session = await api.createCollabInvite(projectId, sid, trimmed, role, expiryHours, existingNonce);
       setSessions((prev) => [...prev, session]);
       const email = pickedEmail || (isEmail(trimmed) ? trimmed : '');
       if (email) setEmails((prev) => ({ ...prev, [session.token]: email }));
@@ -143,7 +153,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 
       // When first invite is created, start collab for the owner too
       if (!isCollabActive) {
-        onStartCollab(session);
+        onStartCollab(session, sid);
       }
     } catch (err) {
       showToast(t('share.toast.inviteFailed', { message: err instanceof Error ? err.message : String(err) }), 'error');
