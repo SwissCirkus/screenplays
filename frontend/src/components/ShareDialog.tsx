@@ -6,6 +6,7 @@ import { formatDateTime } from '../i18n/format';
 import { api } from '../services/api';
 import type { CollabSession } from '../services/api';
 import { useSettingsStore } from '../stores/settingsStore';
+import { collabServerHttp } from '../config';
 import { collabAuthApi, ensureCollabAuthenticated, collabAuthUnavailableMessage } from '../services/collabAuth';
 import { showToast } from './Toast';
 import Select from './Select';
@@ -173,6 +174,9 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
   // The guest will open this on the collab server (which may be on a different
   // machine than the frontend/backend).
   const linkFor = (token: string) => {
+    // SwissCirkus web build (2026-11-16): /collab/<token> is a page of the writer, not of the co-writing server (which answers
+    // it with 404) — so the link opens the writer itself, which signs the guest into that session.
+    if (collabServerHttp()) return `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/collab/${token}`;
     const collabWs = useSettingsStore.getState().collabServerUrl;
     const collabHttp = collabWs.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
     return `${collabHttp}/collab/${token}`;

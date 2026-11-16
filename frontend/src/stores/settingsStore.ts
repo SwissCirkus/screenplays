@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { collabServerHttp } from '../config';
 import { parseShortcut } from '../utils/shortcuts';
 import { DEFAULT_ELEMENT_MENU_SHORTCUT } from '../utils/elementMenu';
 import { normalizeMacros, type Macro } from '../utils/macros';
@@ -304,8 +305,19 @@ function loadDefaultScriptFormat(): string | null {
 }
 
 // Same fallback as getCollabWsUrl() in config.ts, so Settings and invite links
-// name the server the app actually connects to.
-const DEFAULT_COLLAB_URL = import.meta.env.VITE_COLLAB_WS_URL || 'wss://collab.open-draft.com';
+// name the server the app actually connects to. SwissCirkus web build (2026-11-16: "I couldn't reach the collaboration
+// server"): our own co-writing server (VITE_COLLAB_SERVER) comes first — the default was OpenDraft's public server, which
+// answers our site with an error, so Collaborate said it couldn't reach the server and invite links pointed there.
+const OPENDRAFT_COLLAB_URL = 'wss://collab.open-draft.com';
+export function defaultCollabUrl(server: string = collabServerHttp()): string {
+  if (server) return server.replace(/^http(s?):\/\//, 'ws$1://');
+  return import.meta.env.VITE_COLLAB_WS_URL || OPENDRAFT_COLLAB_URL;
+}
+// A setting saved while the default was OpenDraft's server is moved to ours when this build has its own.
+export function storedCollabUrl(stored: string | null, server: string = collabServerHttp()): string {
+  if (!stored || (server && stored.replace(/\/+$/, '') === OPENDRAFT_COLLAB_URL)) return defaultCollabUrl(server);
+  return stored;
+}
 
 function loadAuth(): CollabAuth {
   try {
@@ -316,7 +328,7 @@ function loadAuth(): CollabAuth {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  collabServerUrl: localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_COLLAB_URL,
+  collabServerUrl: storedCollabUrl(localStorage.getItem(STORAGE_KEY_URL)),
   setCollabServerUrl: (url) => {
     localStorage.setItem(STORAGE_KEY_URL, url);
     set({ collabServerUrl: url });

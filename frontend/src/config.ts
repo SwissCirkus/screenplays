@@ -127,8 +127,9 @@ export function getAuthBase(): string {
 
 export function getCollabWsUrl(): string {
   const stored = localStorage.getItem('opendraft:collabServerUrl');
-  if (stored) return stored;
   const server = collabServerHttp();
+  // SwissCirkus: an address saved while OpenDraft's server was the default gives way to our own (2026-11-16)
+  if (stored && !(server && stored.replace(/\/+$/, '') === DEFAULT_COLLAB_WS)) return stored;
   if (server) return server.replace(/^http(s?):\/\//, 'ws$1://');
   return import.meta.env.VITE_COLLAB_WS_URL || DEFAULT_COLLAB_WS;
 }
