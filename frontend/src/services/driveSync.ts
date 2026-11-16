@@ -647,6 +647,9 @@ function keepToken() {
 /** A fresh Drive pass without asking: from the co-writing server when it keeps one for you, else Google's quiet renew. */
 async function renewQuietly(): Promise<boolean> {
   if (await passFromServer()) return true;
+  // Where the server keeps Drive connected, never open Google's window without a click (the browser blocks it — Christian
+  // 2026-11-16): the initials menu says Reconnect instead. Only the old Drive-only setup tries Google's quiet renew.
+  if (await checkOneStep()) return false;
   try { await signInToDrive(); return true; } catch { return false; } // the indicator offers Connect
 }
 function setDriveToken(token: string, expiresIn: number) {

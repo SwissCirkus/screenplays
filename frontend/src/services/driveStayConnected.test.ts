@@ -75,3 +75,13 @@ describe('a server without the Google secret yet', () => {
     expect(await D.checkOneStep()).toBe(false); // asked once per visit
   });
 });
+
+describe('no Google window without a click', () => {
+  it('where the server keeps Drive connected, a quiet renew never falls back to Google\'s pop-up (the browser blocks it)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const s = readFileSync(new URL('./driveSync.ts', import.meta.url), 'utf8');
+    const body = s.slice(s.indexOf('async function renewQuietly()'), s.indexOf('function setDriveToken('));
+    expect(body.indexOf('if (await checkOneStep()) return false;')).toBeGreaterThan(-1);
+    expect(body.indexOf('if (await checkOneStep()) return false;')).toBeLessThan(body.indexOf('await signInToDrive()'));
+  });
+});
