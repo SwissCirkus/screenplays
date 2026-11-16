@@ -210,6 +210,8 @@ import VersionHistory from './VersionHistory';
 import AssetManager from './AssetManager';
 import { useParams, useNavigate } from 'react-router-dom';
 import { scriptRoute } from '../utils/projectRoutes';
+import { sharedAvailable, getShared, takeSharedSeed, sharedLiveToken, sharedSuggesterKey, isSharedDocName, sharedDocName, type SharedRole } from '../services/sharedScripts';
+import ShareScriptDialog from './ShareScriptDialog';
 import { useGoBack, useGoBackTo } from '../hooks/useGoBack';
 import { setPendingSaveFlush, leaveEditor as leaveEditorScreen } from '../services/pendingSave';
 import OpenFile from './OpenFile';
@@ -606,7 +608,7 @@ function sameOverlays(a: OverlayInfo[], b: OverlayInfo[]): boolean {
 
 const ScreenplayEditor: React.FC = () => {
   const { t: tl, i18n: i18nInstance } = useTranslation(['editor', 'common']);
-  const { projectId: urlProjectId, scriptId: urlScriptId, commitHash: urlCommitHash, collabToken: urlCollabToken } = useParams<{ projectId?: string; scriptId?: string; commitHash?: string; collabToken?: string }>();
+  const { projectId: urlProjectId, scriptId: urlScriptId, commitHash: urlCommitHash, collabToken: urlCollabToken, sharedId: urlSharedId } = useParams<{ projectId?: string; scriptId?: string; commitHash?: string; collabToken?: string; sharedId?: string }>();
   const navigate = useNavigate();
   const goBack = useGoBack();
   const isHistoryMode = Boolean(urlCommitHash);
@@ -842,7 +844,7 @@ const ScreenplayEditor: React.FC = () => {
     collabExitingRef.current = false;
     // What this window's suggestions are signed with in the session, as the
     // collab server works it out from the same token (utils/suggesterId).
-    useSuggestModeStore.getState().setUid(suggesterIdOf(inviteToken));
+    useSuggestModeStore.getState().setUid(suggesterIdOf(isSharedDocName(docName) ? sharedSuggesterKey() : inviteToken));
     setCollabConnectionState('connecting');
     setCollabActivityLog([]);
     addCollabActivity(tg('editor:activity.starting'));
@@ -934,7 +936,8 @@ const ScreenplayEditor: React.FC = () => {
       url: wsUrl,
       name: docName,
       document: ydoc,
-      token: reviewAuthToken(token),
+      // a shared script: the person's own sign-in, asked for fresh on every (re)connect (a sign-in lasts 15 minutes)
+      token: isSharedDocName(docName) ? sharedLiveToken : reviewAuthToken(token),
       onStateless: ({ payload }) => {
         if (providerRef.current !== provider) return;
         const enabled = reviewCapability(payload);
@@ -1473,6 +1476,47 @@ const ScreenplayEditor: React.FC = () => {
       }
     })();
   }, [urlCollabToken, navigate, setCurrentProject, setCurrentScriptId, setDocumentTitle, setupCollab]);
+
+  /* A shared script, at /shared/<id> (SwissCirkus 2026-11-16, services/sharedScripts.ts): it lives on the co-writing server and
+     opens live for anyone it's shared with — the owner, an editor, a suggester or a viewer — whenever they like. Nothing to host and
+     no session to end: close it and the others carry on; open it again and their changes are there. Not signed in: the sign-in
+     window, then it opens. A newly shared script starts from what the Share window handed over (takeSharedSeed). */
+  const [, setSharedRole] = useState<SharedRole | null>(null); // the role in the open shared script (the Share window reads it itself)
+  const sharedAuthTok = useSettingsStore((st) => st.collabAuth.accessToken); // signed in from that page: it opens then
+  const sharedInitFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!urlSharedId || sharedInitFor.current === urlSharedId) return;
+    sharedInitFor.current = urlSharedId;
+    (async () => {
+      const auth = await ensureCollabAuthenticated();
+      if (auth === 'signed-out') { sharedInitFor.current = null; setCollabLoginOpen(true); return; }
+      let meta;
+      try { meta = await getShared(urlSharedId); }
+      catch (err) {
+        showToast(`Couldn't open the shared script: ${err instanceof Error ? err.message : String(err)}`, 'error'); // i18n-ignore: SwissCirkus
+        navigate('/', { replace: true });
+        return;
+      }
+      const role: CollabRole = meta.role === 'owner' ? 'editor' : (meta.role as CollabRole);
+      const seed = takeSharedSeed(urlSharedId);
+      collabInitialContent.current = seed;
+      const name = useSettingsStore.getState().collabAuth.user?.displayName || 'Me';
+      setCurrentProject(null);
+      setCurrentScriptId(null);
+      setDocumentTitle(meta.title);
+      if (!await setupCollab(sharedDocName(urlSharedId), 'shared', name, meta.role === 'owner' && !!seed, undefined, role)) return;
+      setSharedRole(meta.role);
+      setCollabUserName(name);
+      setCollabRole(role);
+      setIsCollabHost(false);
+      setCollabMode(true);
+      setEditorKey((k) => k + 1);
+      if (meta.role === 'viewer') showToast(tg('editor:toast.connectedViewer'), 'info');
+      if (meta.role === 'suggester') showToast(tg('editor:toast.connectedSuggester'), 'info');
+    })();
+  }, [urlSharedId, sharedAuthTok, navigate, setCurrentProject, setCurrentScriptId, setDocumentTitle, setupCollab]);
+  // leaving a shared script for another page: its live connection closes (the others carry on)
+  useEffect(() => () => { if (sharedInitFor.current) { sharedInitFor.current = null; destroyCollab(); } }, [urlSharedId, destroyCollab]);
 
   // handleStartCollab is defined after the editor — see below useEditor
 
@@ -5775,13 +5819,21 @@ const ScreenplayEditor: React.FC = () => {
     setShareDialogOpen(true);
   }, []);
   const handleCollaborate = useCallback(async () => {
-    if (!currentProject || !currentScriptId) {
+    if (!(sharedAvailable() && urlSharedId) && (!currentProject || !currentScriptId)) {
       showToast(tg('editor:toast.saveAsFirst'), 'info');
       useEditorStore.getState().setSaveAsOpen(true);
       return;
     }
     await openShareDialog();
-  }, [currentProject, currentScriptId, openShareDialog]);
+  }, [currentProject, currentScriptId, openShareDialog, urlSharedId]);
+  // Share (web build): what a newly shared script starts from — the editor's text as it is now (no notes or settings)
+  const sharedSeedNow = useCallback((): Record<string, unknown> | null => {
+    const ed = collabEditorRef.current || editor;
+    if (!ed || ed.isDestroyed) return null;
+    const { _notes, _generalNotes, _tags, _tagCategories, _characterProfiles, _characterRelationships, _templateId, _pageLayout, ...pmDoc } = ed.getJSON() as Record<string, unknown>;
+    void _notes; void _generalNotes; void _tags; void _tagCategories; void _characterProfiles; void _characterRelationships; void _templateId; void _pageLayout;
+    return pmDoc;
+  }, [editor]);
   /* Collaborate on a copy (SwissCirkus, Christian 2026-11-16: "when I invite somebody … make a copy immediately in the project of
      that script … and add the collab behind the script name"): the first invite saves the original as it is, makes
      "<title> (collab)" in the same project from what's on screen, and switches to it — you and your guest write in the copy and
@@ -6437,7 +6489,19 @@ const ScreenplayEditor: React.FC = () => {
         style={{ display: 'none' }}
         onChange={handleImageFileChange}
       />
-      {!isHistoryMode && shareDialogOpen && currentProject && currentScriptId && (
+      {/* Share (web build, 2026-11-16): a script shared by email that anyone with it opens whenever they like */}
+      {!isHistoryMode && shareDialogOpen && sharedAvailable() && (urlSharedId || (currentProject && currentScriptId)) && (
+        <ShareScriptDialog
+          localScriptId={urlSharedId ? null : currentScriptId}
+          sharedId={urlSharedId || null}
+          title={useEditorStore.getState().documentTitle}
+          format="screenplay"
+          getSeed={sharedSeedNow}
+          onOpen={(id) => navigate(`/shared/${id}`)}
+          onClose={() => setShareDialogOpen(false)}
+        />
+      )}
+      {!isHistoryMode && shareDialogOpen && !sharedAvailable() && currentProject && currentScriptId && (
         <ShareDialog
           projectId={currentProject.id}
           scriptId={currentScriptId}

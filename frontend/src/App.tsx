@@ -60,6 +60,8 @@ function App() {
         <Route path="/project/:projectId/treatment/:scriptId" element={<TreatmentEditor />} />
         <Route path="/project/:projectId/history/:scriptId/:commitHash" element={<ScreenplayEditor />} />
         <Route path="/collab/:collabToken" element={<ScreenplayEditor />} />
+        {/* A shared script (services/sharedScripts.ts): opened live by anyone it's shared with, whenever they like */}
+        <Route path="/shared/:sharedId" element={<ScreenplayEditor />} />
         <Route path="/settings" element={<SettingsPageC />} />
         {pluginRoutes.map((r) => (
           <Route key={r.path} path={r.path} element={<r.component />} />

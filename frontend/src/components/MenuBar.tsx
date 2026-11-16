@@ -4271,7 +4271,7 @@ const MenuBar: React.FC<MenuBarProps> = ({
           onMouseDown={keepEditorSelection}
           onClick={() => { setActiveMenu(null); onCollaborate(); }}
         >
-          <FaUserFriends /> <span className="menu-assistant-label">{'Collaborate' /* i18n-ignore */}</span>
+          <FaUserFriends /> <span className="menu-assistant-label">{(collabServerHttp() ? 'Share' : 'Collaborate') /* i18n-ignore: Share = shared scripts (web build) */}</span>
         </button>
       )}
       {/* SwissCirkus (Christian 2026-11-14): inside Kontroll, open this same page in the computer's web browser. */}
