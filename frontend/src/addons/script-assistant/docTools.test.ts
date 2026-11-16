@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { DOCS_OFF_PROMPT, DOCS_ON_PROMPT, isLookup, isWrite, lookupResult, matchProject, parseDocActions, projectsForModel } from './docTools';
 import {
@@ -95,19 +95,26 @@ describe('Google Docs calls', () => {
     await expect(readDoc('x')).rejects.toThrow('File not found: x');
   });
 
-  it('setup asks Google for the whole Drive once, and can be turned off', async () => {
+  it('setup asks Google for the whole Drive once — on its own sign-in, not the main one — and can be turned off', async () => {
+    vi.stubEnv('VITE_GOOGLE_DOCS_CLIENT_ID', '');
+    expect(await setUpDocsAccess()).toBe(false); // not set up on this site: says so, asks Google nothing
+    expect(useDocsAccess.getState().message).toMatch(/isn't set up on this site yet/);
+    vi.stubEnv('VITE_GOOGLE_DOCS_CLIENT_ID', 'docs-client.apps.googleusercontent.com');
     let asked = '';
+    let client = '';
     _setDocsTestHooks({
       token: null,
       gsi: async () => ({ accounts: { oauth2: {
         hasGrantedAllScopes: () => true,
-        initTokenClient: (cfg: { scope: string; callback: (r: unknown) => void }) => ({
-          requestAccessToken: () => { asked = cfg.scope; cfg.callback({ access_token: 'new', expires_in: 3600 }); },
+        initTokenClient: (cfg: { client_id: string; scope: string; callback: (r: unknown) => void }) => ({
+          requestAccessToken: () => { asked = cfg.scope; client = cfg.client_id; cfg.callback({ access_token: 'new', expires_in: 3600 }); },
         }),
       } } }),
     });
     expect(await setUpDocsAccess()).toBe(true);
     expect(asked).toBe('https://www.googleapis.com/auth/drive');
+    expect(client).toBe('docs-client.apps.googleusercontent.com');
+    vi.unstubAllEnvs();
     expect(useDocsAccess.getState().on).toBe(true);
     expect(localStorage.getItem('screenplays:docsAccess')).toBe('1');
     turnOffDocsAccess();

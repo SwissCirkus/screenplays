@@ -66,6 +66,7 @@ import { buildExportFootnotePlan } from '../utils/exportFootnotes';
 import { downloadDocx } from '../utils/docxExporter';
 import { parseDocx } from '../utils/docxImporter';
 import { downloadOdraft } from '../utils/odraftFormat';
+import { runBackup, chooseBackupFolder, canPickFolder, backupFolderName } from '../services/fullBackup';
 import { packScratchAssets } from '../services/snapshotAssets';
 import { pasteAsFountain } from '../utils/pasteFountain';
 import { copySelection, cutSelection, pasteIntoEditor } from '../utils/clipboardCommands';
@@ -2748,6 +2749,29 @@ const MenuBar: React.FC<MenuBarProps> = ({
     void openBackupFolder();
   }, [openBackupFolder]);
 
+  /* File › Backup (browser build, SwissCirkus 2026-11-16): every project, script and saved version in one zip, into the folder
+     you chose (services/fullBackup.ts). */
+  const [webBackupFolder, setWebBackupFolder] = useState<string | null>(null);
+  useEffect(() => { if (!backupsSupported() && canPickFolder()) void backupFolderName().then(setWebBackupFolder); }, []);
+  const handleWebBackup = useCallback(async () => {
+    try {
+      showToast('Backing up all your scripts…', 'info'); // i18n-ignore: SwissCirkus
+      const out = await runBackup();
+      if (out.where === 'cancelled') return;
+      const { projects, scripts, versions, failed } = out.result;
+      const what = `${scripts} script${scripts === 1 ? '' : 's'} in ${projects} project${projects === 1 ? '' : 's'}${versions ? `, ${versions} saved version${versions === 1 ? '' : 's'}` : ''}`;
+      if (out.where === 'folder') setWebBackupFolder(out.folder);
+      showToast(`Backed up ${what} — ${out.result.filename}${out.where === 'folder' ? ` in “${out.folder}”` : ' (in your downloads)'}`, 'success'); // i18n-ignore: SwissCirkus
+      if (failed.length) showToast(`Couldn't read ${failed.join(', ')} — not in this backup`, 'error'); // i18n-ignore: SwissCirkus
+    } catch (err) {
+      showToast(`Backup failed: ${err instanceof Error ? err.message : String(err)}`, 'error'); // i18n-ignore: SwissCirkus
+    }
+  }, []);
+  const handleChooseWebBackupFolder = useCallback(async () => {
+    const h = await chooseBackupFolder();
+    if (h) { setWebBackupFolder(h.name); showToast(`Backups go into “${h.name}”`, 'success'); } // i18n-ignore: SwissCirkus
+  }, []);
+
   const handleExportOdraft = useCallback(async () => {
     if (!editor) return;
     try {
@@ -3222,6 +3246,24 @@ const MenuBar: React.FC<MenuBarProps> = ({
         // folder across a reload. Omitted rather than disabled — a permanently
         // greyed submenu just invites bug reports.
         ...(isNativeApp() && ['macos', 'ios', 'android'].includes(nativeOS()) ? [{ icon: <FaHistory />, label: t('menu:file.recoverOriginalFile'), action: () => setSourceBackupOpen(true) }] : []),
+        // Browser build: File › Backup — everything in one zip, into the folder you chose (or your downloads)
+        ...(!backupsSupported() ? [
+          { separator: true, label: '' },
+          {
+            icon: <FaArchive />, label: 'Backup', // i18n-ignore: SwissCirkus
+            disabled: isCollabGuest,
+            children: [
+              {
+                icon: <FaArchive />, label: 'Back up all scripts now', action: () => { void handleWebBackup(); }, disabled: isCollabGuest, // i18n-ignore: SwissCirkus
+                title: canPickFolder() ? (webBackupFolder ? `One zip of every project, script and saved version, into “${webBackupFolder}”` : 'One zip of every project, script and saved version — you choose the folder the first time') : "One zip of every project, script and saved version — into your browser's download folder", // i18n-ignore: SwissCirkus
+              },
+              ...(canPickFolder() ? [{
+                icon: <FaFolderOpen />, label: webBackupFolder ? `Backup folder: ${webBackupFolder}…` : 'Choose backup folder…', action: () => { void handleChooseWebBackupFolder(); }, // i18n-ignore: SwissCirkus
+                title: 'Where backups are saved', // i18n-ignore: SwissCirkus
+              }] : []),
+            ],
+          },
+        ] : []),
         ...(backupsSupported() ? [
           { separator: true, label: '' },
           {

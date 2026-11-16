@@ -8,9 +8,16 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- Google's sign-in script (gsi/client) comes without types, as in driveSync.ts */
 import { create } from 'zustand';
-import { GOOGLE_CLIENT_ID, currentDriveToken } from './driveSync';
+import { currentDriveToken } from './driveSync';
 
 export const DOCS_SCOPE = 'https://www.googleapis.com/auth/drive';
+/* Its own Google sign-in (Christian 2026-11-16): whole-Drive access is a "restricted" permission, and asking for it on the main
+   SwissCirkus sign-in would mean a paid yearly security audit before Google verifies it. So the main sign-in asks only for the
+   Drive files the writer makes (drive.file), and this one — a second, unverified Google project — asks for the whole Drive, for
+   the few people who turn it on. They see Google's "unverified app" screen once (Advanced → Continue); it allows 100 people. */
+export const docsClientId = (): string => import.meta.env.VITE_GOOGLE_DOCS_CLIENT_ID || '';
+/** Is whole-Drive access set up on this site? */
+export const docsAccessAvailable = () => !!docsClientId();
 const FLAG = 'screenplays:docsAccess';
 const TOKEN_KEY = 'screenplays:docsToken';
 const DOC_MIME = 'application/vnd.google-apps.document';
@@ -60,7 +67,7 @@ async function askGoogle(prompt: '' | 'consent'): Promise<void> {
   const g = await gsiLoader();
   await new Promise<void>((resolve, reject) => {
     const client = g.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: docsClientId(),
       scope: DOCS_SCOPE,
       include_granted_scopes: true,
       callback: (res: any) => {
@@ -80,6 +87,10 @@ async function askGoogle(prompt: '' | 'consent'): Promise<void> {
 
 /** The setup button (must run from a click: Google opens its window). */
 export async function setUpDocsAccess(): Promise<boolean> {
+  if (!docsAccessAvailable()) {
+    useDocsAccess.setState({ message: "Access to all your Google Docs isn't set up on this site yet — the Docs the writer made itself still work" }); // i18n-ignore: SwissCirkus
+    return false;
+  }
   try {
     await askGoogle('consent');
     try { localStorage.setItem(FLAG, '1'); } catch { /* ignore */ }
