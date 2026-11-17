@@ -3659,6 +3659,11 @@ div[data-type="cast-list"].is-empty::before { content: 'Cast...'; color: var(--p
   font-size: 14px; outline: none; width: 100%; box-sizing: border-box;
 }
 .dialog-input:focus { border-color: var(--fd-accent); }
+/* menus in the dialogs (Share's "Can edit / suggest / read"): the theme's own colours, not the system's light list, and no heavy blue
+   ring when focused — the same quiet edge as the other boxes (Christian 2026-11-17) */
+:root:not([data-theme="light"]) select.dialog-input { color-scheme: dark; }
+select.dialog-input option { background: var(--fd-bg); color: var(--fd-text); }
+select.dialog-input:focus, select.dialog-input:focus-visible { outline: none; box-shadow: none; border-color: var(--fd-text-muted); }
 
 /* ── Synopsis modal ── */
 .synopsis-modal-overlay { z-index: 3500; }

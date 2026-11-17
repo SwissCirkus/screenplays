@@ -62,7 +62,7 @@ const ShareScriptDialog: React.FC<Props> = ({ localScriptId, sharedId, title, fo
     try { const m = await getShared(sid); setRole(m.role); setPeople(m.shares || []); setOwner(m.owner || null); }
     catch (err) { setProblem(err instanceof Error ? err.message : String(err)); }
   };
-  useEffect(() => { inputRef.current?.focus(); if (id) void refresh(id); if (useContacts.getState().on) void loadContacts(false); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { inputRef.current?.focus(); if (id) void refresh(id); void loadContacts(false); }, []); // suggestions load by themselves once allowed (the server keeps them, 2026-11-17) // eslint-disable-line react-hooks/exhaustive-deps
 
   const canManage = !id || role === 'owner';
   const email = pickedEmail || (isEmail(text) ? text.trim() : '');
@@ -152,7 +152,9 @@ const ShareScriptDialog: React.FC<Props> = ({ localScriptId, sharedId, title, fo
               </div>
               <div className="collab-gmail-line">
                 {pickedEmail && <span>Shares with <b>{pickedEmail}</b></span>}
-                {!contactsOn && <button type="button" className="collab-gmail-link" onClick={() => void loadContacts(true)} disabled={contactsLoading}>{contactsLoading ? 'Asking Google…' : 'Suggest people from Gmail'}</button>}
+                {/* on, but nothing loaded (Google's permission runs out after an hour; the list is kept in memory only): a click asks again — it used to
+                    hide the button once on, leaving no way to get the suggestions back (Christian 2026-11-17) */}
+                {(!contactsOn || (!contacts.length && !contactsLoading)) && <button type="button" className="collab-gmail-link" onClick={() => void loadContacts(true)} disabled={contactsLoading}>{contactsLoading ? 'Asking Google…' : contactsOn ? 'Load suggestions from Gmail' : 'Suggest people from Gmail'}</button>}
               </div>
             </>
           )}

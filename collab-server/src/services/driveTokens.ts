@@ -93,25 +93,25 @@ const nowIso = () => new Date().toISOString();
  * remembers), `needsConsent` — the writer asks once more with Google's consent screen, which always sends one.
  */
 export async function connect(db: DBAdapter, g: GoogleDrivePass, userId: string, code: string):
-  Promise<{ ok: true; access_token?: string; expires_in?: number } | { ok: false; needsConsent?: boolean; error: string }> {
+  Promise<{ ok: true; access_token?: string; expires_in?: number; scope?: string } | { ok: false; needsConsent?: boolean; error: string }> {
   if (!code || typeof code !== 'string' || code.length > 2048) return { ok: false, error: 'No Google code' };
   return keep(db, userId, await g.exchange(code));
 }
 
 /** Keep what Google's code was swapped for (Connect, or the one-step Google sign-in in routes/auth.ts). */
 export async function keep(db: DBAdapter, userId: string, t: { refresh_token?: string | null; scope?: string | null; access_token?: string | null; expires_in?: number }):
-  Promise<{ ok: true; access_token?: string; expires_in?: number } | { ok: false; needsConsent?: boolean; error: string }> {
+  Promise<{ ok: true; access_token?: string; expires_in?: number; scope?: string } | { ok: false; needsConsent?: boolean; error: string }> {
   if (!String(t.scope || '').split(/\s+/).includes(DRIVE_FILE_SCOPE)) return { ok: false, error: 'Access to the Drive files the writer makes was not ticked' };
   if (!t.refresh_token) {
     // Google sends the lasting pass only the first time; if we still have one, that's fine
-    if (await isConnected(db, userId)) return { ok: true, access_token: t.access_token || undefined, expires_in: t.expires_in };
+    if (await isConnected(db, userId)) return { ok: true, access_token: t.access_token || undefined, expires_in: t.expires_in, scope: t.scope || '' };
     return { ok: false, needsConsent: true, error: 'Google sent no lasting pass' };
   }
   const sealed = seal(t.refresh_token);
   const had = await db.get<{ user_id: string }>('SELECT user_id FROM drive_tokens WHERE user_id = ?', [userId]);
   if (had) await db.run('UPDATE drive_tokens SET refresh_enc = ?, scope = ?, updated_at = ? WHERE user_id = ?', [sealed, t.scope || '', nowIso(), userId]);
   else await db.run('INSERT INTO drive_tokens (user_id, refresh_enc, scope, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [userId, sealed, t.scope || '', nowIso(), nowIso()]);
-  return { ok: true, access_token: t.access_token || undefined, expires_in: t.expires_in };
+  return { ok: true, access_token: t.access_token || undefined, expires_in: t.expires_in, scope: t.scope || '' };
 }
 
 export async function isConnected(db: DBAdapter, userId: string): Promise<boolean> {
@@ -119,12 +119,13 @@ export async function isConnected(db: DBAdapter, userId: string): Promise<boolea
 }
 
 /** A fresh one-hour Drive pass. DriveReconnect when there's none kept, or Google ended it (then it's forgotten here too). */
-export async function freshPass(db: DBAdapter, g: GoogleDrivePass, userId: string): Promise<{ access_token: string; expires_in: number }> {
-  const row = await db.get<{ refresh_enc: string }>('SELECT refresh_enc FROM drive_tokens WHERE user_id = ?', [userId]);
+export async function freshPass(db: DBAdapter, g: GoogleDrivePass, userId: string): Promise<{ access_token: string; expires_in: number; scope: string }> {
+  const row = await db.get<{ refresh_enc: string; scope: string }>('SELECT refresh_enc, scope FROM drive_tokens WHERE user_id = ?', [userId]);
   if (!row) throw new DriveReconnect();
   let rt: string;
   try { rt = open(row.refresh_enc); } catch { await db.run('DELETE FROM drive_tokens WHERE user_id = ?', [userId]); throw new DriveReconnect(); }
-  try { return await g.refresh(rt); }
+  // scope: what the pass covers (Drive, and Gmail suggestions once allowed — the writer's Share window reads them with it)
+  try { return { ...(await g.refresh(rt)), scope: row.scope || '' }; }
   catch (err: any) {
     if (err?.invalidGrant) { await db.run('DELETE FROM drive_tokens WHERE user_id = ?', [userId]); throw new DriveReconnect(); }
     throw err;

@@ -29,7 +29,7 @@ router.post('/connect', async (req, res) => {
   if (!D.available()) return off(res);
   try {
     const r = await D.connect(getDB(), google, uid(req), req.body?.code);
-    if (r.ok) return res.json({ connected: true, access_token: r.access_token, expires_in: r.expires_in });
+    if (r.ok) return res.json({ connected: true, access_token: r.access_token, expires_in: r.expires_in, scope: r.scope });
     return res.status(r.needsConsent ? 409 : 400).json({ error: r.error, needsConsent: !!r.needsConsent });
   } catch (err: any) {
     console.warn('[drive] connect failed:', err?.message || err);

@@ -7,7 +7,8 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- Google's sign-in script (gsi/client) comes without types, as in driveSync.ts */
 import { create } from 'zustand';
-import { GOOGLE_CLIENT_ID } from './driveSync';
+import { GOOGLE_CLIENT_ID, checkOneStep, serverPass, allowMoreFromGoogle } from './driveSync';
+import { useSettingsStore } from '../stores/settingsStore';
 
 export const CONTACTS_SCOPES = [
   'https://www.googleapis.com/auth/contacts.other.readonly', // the people Gmail suggests (you've written to them)
@@ -120,8 +121,22 @@ export async function loadContacts(ask = false): Promise<Contact[]> {
   useContacts.setState({ loading: true, message: '' });
   try {
     if (!contactsTokenValid()) {
-      if (!ask) { useContacts.setState({ loading: false }); return useContacts.getState().contacts; }
-      await askGoogle(useContacts.getState().on ? '' : 'consent');
+      // Signed in, with the co-writing server keeping your Google pass (Christian 2026-11-17: "it wouldn't suggest any emails"):
+      // suggestions stay allowed like Drive — the server's pass covers them once you've said yes, no hourly Google window.
+      const viaServer = !!useSettingsStore.getState().collabAuth.user && await checkOneStep();
+      const covers = (scope: string) => CONTACTS_SCOPES.some((s) => scope.split(/\s+/).includes(s));
+      if (viaServer) {
+        const p = await serverPass();
+        if (p && covers(p.scope)) { token = p.token; expiry = p.expiry; }
+      }
+      if (!contactsTokenValid()) {
+        if (!ask) { useContacts.setState({ loading: false }); return useContacts.getState().contacts; }
+        if (viaServer) {
+          const p = await allowMoreFromGoogle(CONTACTS_SCOPES);
+          if (!covers(p.scope)) throw new Error('Access to your contacts was not ticked');
+          token = p.token; expiry = p.expiry;
+        } else await askGoogle(useContacts.getState().on ? '' : 'consent');
+      }
     }
     try { localStorage.setItem(FLAG, '1'); } catch { /* ignore */ }
     const [other, saved] = await Promise.all([

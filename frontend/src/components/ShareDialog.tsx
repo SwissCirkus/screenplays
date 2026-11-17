@@ -303,9 +303,10 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
           </div>
           <div className="collab-gmail-line">
             {pickedEmail && <span>{'Invite link for ' /* i18n-ignore */}<b>{pickedEmail}</b>{' — you can email it from the list below.' /* i18n-ignore */}</span>}
-            {!contactsOn && (
+            {/* also when on but nothing is loaded (the permission ran out) — a click asks Google again (2026-11-17) */}
+            {(!contactsOn || (!contacts.length && !contactsLoading)) && (
               <button type="button" className="collab-gmail-link" onClick={() => void loadContacts(true)} disabled={contactsLoading}>
-                {contactsLoading ? 'Asking Google…' : 'Suggest people from Gmail' /* i18n-ignore */}
+                {contactsLoading ? 'Asking Google…' : contactsOn ? 'Load suggestions from Gmail' /* i18n-ignore */ : 'Suggest people from Gmail' /* i18n-ignore */}
               </button>
             )}
             {contactsOn && !contacts.length && (

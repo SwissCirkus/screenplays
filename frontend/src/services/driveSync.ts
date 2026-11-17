@@ -781,11 +781,48 @@ export async function passFromServer(): Promise<boolean> {
     if (await ensureCollabAuthenticated() !== 'ok') return false;
     const r = await fetchServer(`${collabServerHttp()}/api/drive/token`, { method: 'POST', headers: { authorization: `Bearer ${useSettingsStore.getState().collabAuth.accessToken}` } });
     if (!r.ok) return false; // 409: not kept (or Google ended it) — the indicator offers Sign in
-    const j = (await r.json()) as { access_token?: string; expires_in?: number };
+    const j = (await r.json()) as { access_token?: string; expires_in?: number; scope?: string };
     if (!j.access_token) return false;
     setDriveToken(j.access_token, j.expires_in || 3600);
+    serverScope = j.scope || '';
     return true;
   } catch { return false; }
+}
+/* What the server's pass covers: Drive, plus Gmail suggestions once allowed (services/googleContacts.ts reads them with it). */
+let serverScope = '';
+/** The current pass from the server and what it covers — null when there isn't one. Never asks anything. */
+export async function serverPass(): Promise<{ token: string; expiry: number; scope: string } | null> {
+  if (!(currentDriveToken() && serverScope) && !await passFromServer()) return null;
+  return accessToken ? { token: accessToken, expiry: tokenExpiry, scope: serverScope } : null;
+}
+/**
+ * Must run from a click: allow more from Google on top of Drive (Gmail suggestions), kept by the server like Drive — so it
+ * stays allowed too. Google's window shows only what's new; the lasting pass then covers everything you've allowed.
+ */
+export async function allowMoreFromGoogle(scopes: string[]): Promise<{ token: string; expiry: number; scope: string }> {
+  if (await ensureCollabAuthenticated() !== 'ok') throw new Error('Sign in first (top right)');
+  await loadGsi();
+  const g = (window as any).google;
+  const code = await new Promise<string>((resolve, reject) => {
+    const client = g.accounts.oauth2.initCodeClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: [DRIVE_SCOPE, ...scopes].join(' '),
+      include_granted_scopes: true,
+      ux_mode: 'popup',
+      prompt: 'consent', // the consent screen always gives a lasting pass covering everything allowed
+      callback: (res: any) => { if (res.error || !res.code) reject(new Error(res.error_description || res.error || 'Google gave no code')); else resolve(res.code); },
+      error_callback: (err: any) => reject(new Error(err?.message || 'The Google window was closed')),
+    });
+    client.requestCode();
+  });
+  const r = await fetchServer(`${collabServerHttp()}/api/drive/connect`, {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${useSettingsStore.getState().collabAuth.accessToken}` }, body: JSON.stringify({ code }),
+  });
+  const j = (await r.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; scope?: string; error?: string };
+  if (!r.ok || !j.access_token) throw new Error(j.error || `The co-writing server answered ${r.status}`);
+  setDriveToken(j.access_token, j.expires_in || 3600);
+  serverScope = j.scope || '';
+  return { token: j.access_token, expiry: tokenExpiry, scope: serverScope };
 }
 
 /** Must run from a click: one Google window — signed in to co-writing, and Drive connected for good. */
@@ -799,6 +836,7 @@ export async function signInWithGoogle(): Promise<void> {
       client_id: GOOGLE_CLIENT_ID,
       scope: SIGNIN_SCOPES,
       ux_mode: 'popup',
+      include_granted_scopes: true, // signing in again keeps what else you allowed (Gmail suggestions)
       ...(consent ? { prompt: 'consent' } : {}), // the first time: Google's consent screen, which always gives the lasting pass
       callback: (res: any) => { if (res.error || !res.code) reject(new Error(res.error_description || res.error || 'Google gave no code')); else resolve(res.code); },
       error_callback: (err: any) => reject(new Error(err?.message || 'Sign-in was closed')),
@@ -810,7 +848,7 @@ export async function signInWithGoogle(): Promise<void> {
   if (!r.ok) throw new Error(j.error || `The co-writing server answered ${r.status}`);
   handleAuthResponse(j);
   try { localStorage.removeItem(FORCE_CONSENT); } catch { /* ignore */ }
-  if (j.drive?.connected && j.drive.access_token) { setDriveToken(j.drive.access_token, j.drive.expires_in || 3600); return; }
+  if (j.drive?.connected && j.drive.access_token) { setDriveToken(j.drive.access_token, j.drive.expires_in || 3600); serverScope = (j.drive as { scope?: string }).scope || ''; return; }
   if (j.drive?.connected && await passFromServer()) return;
   if (j.drive?.needsConsent) { try { localStorage.setItem(FORCE_CONSENT, '1'); } catch { /* ignore */ } }
   throw new Error(j.drive?.needsConsent ? "You're signed in — press Sign in once more to finish connecting Google Drive" : (j.drive?.error || "Google Drive didn't connect"));

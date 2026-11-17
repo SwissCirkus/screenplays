@@ -84,6 +84,7 @@ test('connect once, then fresh passes; Google ending it asks to connect again', 
 
     const t = await call(me, 'POST', '/api/drive/token');
     assert.equal(t.status, 200); assert.equal(t.body.access_token, 'at-from-rt-c1');
+    assert.equal(t.body.scope, `openid ${SCOPE}`); // what the pass covers, for the writer
     assert.equal((await call(other, 'POST', '/api/drive/token')).status, 409); // each person's own pass only
 
     await call(me, 'POST', '/api/drive/connect', { code: 'c2' }); // connecting again replaces it
@@ -120,7 +121,7 @@ test('one Google window: signed in here, and Drive connected for good', async ()
     assert.equal(r.status, 200);
     assert.equal(r.body.user.email, 'new@example.com');
     assert.ok(r.body.accessToken && r.body.refreshToken);
-    assert.deepEqual(r.body.drive, { connected: true, access_token: 'at-signin', expires_in: 3599 });
+    assert.deepEqual(r.body.drive, { connected: true, access_token: 'at-signin', expires_in: 3599, scope: `openid email ${SCOPE}` });
     const t = await post('/api/drive/token', {}, r.body.accessToken);
     assert.equal(t.body.access_token, 'at-from-rt-signin');
     // signing in again: Google sends no new lasting pass — the kept one carries on

@@ -644,7 +644,7 @@ router.post('/google-code', strictLimiter, async (req, res) => {
     await auditService.logEvent('google_login', user.id, null, { email: user.email, drive: kept.ok }, getClientIp(req));
     res.json({
       user: userResponse(user), accessToken, refreshToken,
-      drive: kept.ok ? { connected: true, access_token: kept.access_token, expires_in: kept.expires_in } : { connected: false, needsConsent: !!kept.needsConsent, error: kept.error },
+      drive: kept.ok ? { connected: true, access_token: kept.access_token, expires_in: kept.expires_in, scope: kept.scope } : { connected: false, needsConsent: !!kept.needsConsent, error: kept.error },
     });
   } catch (err) {
     console.error('Google code sign-in error:', err);
