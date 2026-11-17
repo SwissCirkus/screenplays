@@ -1,0 +1,1 @@
+import{t as e}from"./react-BiCfrSM_.js";var t=e(e=>({mode:`sqlite`,errorReason:null,acknowledged:!1,setMode:(t,n=null)=>e({mode:t,errorReason:n,acknowledged:!1}),acknowledge:()=>e({acknowledged:!0})}));export{t};

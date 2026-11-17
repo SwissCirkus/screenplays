@@ -1,0 +1,1 @@
+function e(t){if(!t||typeof t!=`object`)return!1;let n=t;if(n.type===`text`&&typeof n.text==`string`&&n.text.trim().length>0||n.type===`hardBreak`)return!0;if(Array.isArray(n.content)){for(let t of n.content)if(e(t))return!0}return!1}function t(t,n,r){return t===void 0||r?!1:!e(t)&&e(n)}export{t as n,e as t};

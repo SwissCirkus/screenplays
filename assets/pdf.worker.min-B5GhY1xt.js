@@ -1,0 +1,1 @@
+var e=`/screenplays/assets/pdf.worker.min-Cr_QfRGn.mjs`;export{e as default};

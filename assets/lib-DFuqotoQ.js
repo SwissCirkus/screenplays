@@ -1,0 +1,1 @@
+var e=[];function t(n){let r=-1;if(!n||!Array.isArray(n)&&!n.type)throw Error("Expected node, not `"+n+"`");if(`value`in n)return n.value;let i=(Array.isArray(n)?n:n.children)||e,a=[];for(;++r<i.length;)a[r]=t(i[r]);return a.join(``)}export{t};

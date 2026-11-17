@@ -1,0 +1,1 @@
+import{t as e}from"./lib-DFuqotoQ.js";function t(){let e=this;e.compiler=n}function n(t){return e(t)}export{t as default};

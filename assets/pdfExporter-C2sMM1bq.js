@@ -1,0 +1,1 @@
+import{y as e}from"./index-CPlx0bBA.js";export{e as renderPDF};

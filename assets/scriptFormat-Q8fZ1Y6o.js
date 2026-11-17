@@ -1,0 +1,1 @@
+var e=new Set([`paragraph`,`heading`,`bulletList`,`orderedList`,`listItem`,`blockquote`,`horizontalRule`]);function t(t){if(!t||typeof t!=`object`)return!1;let n=t.content;return!Array.isArray(n)||n.length===0?!1:n.every(t=>!!t&&typeof t==`object`&&e.has(String(t.type)))}function n(e){let t=typeof e==`string`?e.trim():``;return t&&t!==`json`?t:`screenplay`}export{n,t};
