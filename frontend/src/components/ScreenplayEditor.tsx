@@ -210,6 +210,7 @@ import VersionHistory from './VersionHistory';
 import AssetManager from './AssetManager';
 import { useParams, useNavigate } from 'react-router-dom';
 import { scriptRoute } from '../utils/projectRoutes';
+import { ensureUnfiled, isUnfiled, nextUntitled } from '../services/unfiled';
 import { sharedAvailable, getShared, takeSharedSeed, sharedLiveToken, sharedSuggesterKey, isSharedDocName, sharedDocName, type SharedRole } from '../services/sharedScripts';
 import ShareScriptDialog from './ShareScriptDialog';
 import { useGoBack, useGoBackTo } from '../hooks/useGoBack';
@@ -5246,8 +5247,45 @@ const ScreenplayEditor: React.FC = () => {
 
       const imported = await parseScreenplayImport(file.name, data);
 
+      // SwissCirkus web build (Christian 2026-11-24: "when I drag drop something onto this thing, it should just put it in. If I
+      // have a folder already selected, it should put it into that folder. If nothing is selected … outside all folders at the
+      // very top"): the dropped script is saved straight away — into the project of the script that was open, else into
+      // Unfiled (the top of the Projects tab, to be dragged into a folder) — and becomes the open script. No Save window, no new
+      // folder. A name that is taken gets a number. If the save fails it opens unsaved, as before, and says so.
+      let filed: { project: ProjectInfo; meta: ScriptMeta; list: ScriptMeta[] } | null = null;
+      if (browserLibrary()) {
+        try {
+          const project = currentProject ?? await ensureUnfiled();
+          const list = await api.listScripts(project.id);
+          const made = await api.createScript(project.id, {
+            title: nextUntitled(list.map((m) => m.title), (imported.title || title).trim() || 'Untitled'), // i18n-ignore: a stored title
+            format: 'screenplay',
+            content: imported.doc as Record<string, unknown>,
+          });
+          filed = { project, meta: made.meta, list };
+        } catch (err) {
+          showToast(`Opened, but not saved yet — use File › Save Script: ${err instanceof Error ? err.message : String(err)}`, 'error'); // i18n-ignore: SwissCirkus
+        }
+      }
+
       editor.commands.setContent(imported.doc, true);
       clearEditorHistory(editor);
+      if (filed) {
+        setDocumentTitle(filed.meta.title);
+        setCurrentProject(filed.project);
+        setCurrentScriptId(filed.meta.id);
+        useProjectStore.getState().setScripts([...filed.list, filed.meta]);
+        setShowWelcome(false);
+        useEditorStore.getState().setImportedSource(null);
+        useBackupStatusStore.getState().noteDocumentOpened();
+        window.history.replaceState(null, '', import.meta.env.BASE_URL.replace(/\/$/, '') + scriptRoute(filed.project.id, filed.meta));
+        window.dispatchEvent(new CustomEvent('screenplays:library-changed'));
+        showToast(isUnfiled(filed.project)
+          ? `Saved as “${filed.meta.title}” at the top of Projects — drag it into a folder` // i18n-ignore: SwissCirkus
+          : `Saved as “${filed.meta.title}” in ${filed.project.name}`, 'success'); // i18n-ignore: SwissCirkus
+        for (const w of imported.warnings) console.warn('[Import]', w);
+        return;
+      }
       setDocumentTitle(imported.title || title);
       setCurrentProject(null);
       setCurrentScriptId(null);
@@ -5260,7 +5298,7 @@ const ScreenplayEditor: React.FC = () => {
       console.error('Failed to import dropped file:', err);
       showToast(tg('editor:toast.importFileFailed', { error: err instanceof Error ? err.message : String(err) }), 'error');
     }
-  }, [editor, setDocumentTitle, setCurrentProject, setCurrentScriptId]);
+  }, [editor, currentProject, setDocumentTitle, setCurrentProject, setCurrentScriptId]);
 
   const handleEditorDragOver = useCallback((e: React.DragEvent) => {
     if (!e.dataTransfer.types.includes('Files')) return;
@@ -5512,6 +5550,9 @@ const ScreenplayEditor: React.FC = () => {
         store.setImportedSource(null);
         const scripts = await client.listScripts(projectId);
         useProjectStore.getState().setScripts(scripts);
+        // SwissCirkus fork (2026-11-24): the Projects panel beside the page lists the new script at once — it only reloads on this
+        // notice, so a script saved from a dropped file looked as if it had gone nowhere.
+        window.dispatchEvent(new CustomEvent('screenplays:library-changed'));
         // Only navigate to the project route if there's no deferred action
         // that will reset the editor state (e.g. New Screenplay)
         if (!hasDeferredAction) {

@@ -98,6 +98,29 @@ describe('wiring', () => {
     expect(api).toContain('export const storageReady: Promise<void> = new Promise');
     expect(api).toContain('try { await initStorageNow(); } finally { markStorageReady(); }');
   });
+  it('a script saved into a project shows in the Projects panel at once', () => {
+    const ed = src('../components/ScreenplayEditor.tsx');
+    const at = ed.indexOf('const handleSaveAsComplete = useCallback(');
+    expect(ed.slice(at, at + 4000)).toContain("window.dispatchEvent(new CustomEvent('screenplays:library-changed'));");
+    expect(src('../components/NavigatorProjects.tsx')).toContain("window.addEventListener('screenplays:library-changed', onChanged);");
+  });
+  it('a dropped script is saved at once: into the open project, else Unfiled — never a new folder', () => {
+    const ed = src('../components/ScreenplayEditor.tsx');
+    const at = ed.indexOf('const importDroppedFile = useCallback(');
+    const body = ed.slice(at, ed.indexOf('const handleEditorDragOver', at));
+    expect(body).toContain('const project = currentProject ?? await ensureUnfiled();');
+    expect(body).toContain('nextUntitled(list.map((m) => m.title), (imported.title || title).trim()');
+    expect(body).not.toContain('createProject');
+    // saved before the page shows it, so the open script is never the one written over
+    expect(body.indexOf('await api.createScript(project.id')).toBeLessThan(body.indexOf('editor.commands.setContent(imported.doc, true)'));
+    expect(body).toContain("window.dispatchEvent(new CustomEvent('screenplays:library-changed'));");
+    expect(body).toContain('}, [editor, currentProject, setDocumentTitle, setCurrentProject, setCurrentScriptId]);');
+  });
+  it('Unfiled is listed at the top, and its scripts can be dragged onto a folder', () => {
+    const nav = src('../components/NavigatorProjects.tsx');
+    expect(nav).toContain('const unfiled = projects?.find(isUnfiled) ?? null;');
+    expect(nav).toContain('void moveScript(from, scriptId, projectId);');
+  });
   it('the Script Assistant is a registered opt-in add-on with a menu-bar button', () => {
     expect(src('../addons/index.ts')).toMatch(/scriptAssistant,\s*\]/);
     const menu = src('../components/MenuBar.tsx');
