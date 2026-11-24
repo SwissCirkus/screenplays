@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-DseTPa7n.js";var t=e({sanitizeExportFilename:()=>n});function n(e){return(e||``).replace(/[\u0000-\u001f\u007f]/g,``).replace(/[\\/:*?"<>|]/g,``).replace(/\s+/g,` `).trim().replace(/^\.+/,``).replace(/[. ]+$/,``).slice(0,120).trim()||`Untitled`}export{n,t};

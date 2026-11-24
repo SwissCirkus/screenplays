@@ -1,0 +1,1 @@
+var e=(function(e,t,n){let r=t||`"`,i=n||r,a=-1;if(Array.isArray(e)){let t=e,n=[];for(;++a<t.length;)n[a]=r+t[a]+i;return n}if(typeof e==`string`)return r+e+i;throw TypeError(`Expected string or array of strings`)});export{e as t};
