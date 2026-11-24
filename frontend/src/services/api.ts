@@ -480,7 +480,15 @@ export const api = {
 //
 // Must be called once before the React tree renders (see main.tsx).
 
+let markStorageReady: () => void = () => {};
+/** Resolves when initStorage() has finished — the library is then the real one (in this browser, or SQLite), not the HTTP stand-in.
+ *  Kontroll's commands wait for it: one that arrived while the page was still starting read the HTTP stand-in and got GitHub Pages'
+ *  404 page back as "API error 404" (SwissCirkus fork, 2026-11-24). */
+export const storageReady: Promise<void> = new Promise((resolve) => { markStorageReady = resolve; });
 export async function initStorage(): Promise<void> {
+  try { await initStorageNow(); } finally { markStorageReady(); }
+}
+async function initStorageNow(): Promise<void> {
   const { setCompat } = await import('./compat');
   // Dynamic imports keep the Tauri/SQLite code out of web bundles.
   const { isTauri } = await import('./platform');

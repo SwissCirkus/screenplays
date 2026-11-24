@@ -92,6 +92,12 @@ describe('wiring', () => {
     expect(b).toMatch(/useKontrollBridge\.setState\(\{ hello \}\);\s*autoEnableAssistant\(\);/);
     expect(b).toMatch(/if \(storage\.getItem\(AUTO_KEY\)\) return;/);
   });
+  it("Kontroll's commands wait until the library has started", () => {
+    expect(src('./kontrollBridge.ts')).toContain("import('./api').then((a) => a.storageReady).then(() => import('./kontrollCommands'))");
+    const api = src('./api.ts');
+    expect(api).toContain('export const storageReady: Promise<void> = new Promise');
+    expect(api).toContain('try { await initStorageNow(); } finally { markStorageReady(); }');
+  });
   it('the Script Assistant is a registered opt-in add-on with a menu-bar button', () => {
     expect(src('../addons/index.ts')).toMatch(/scriptAssistant,\s*\]/);
     const menu = src('../components/MenuBar.tsx');

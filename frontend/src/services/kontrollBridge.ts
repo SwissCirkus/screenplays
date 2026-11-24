@@ -154,7 +154,8 @@ export function installKontrollBridge(): void {
       useKontrollBridge.setState({ micLevels: ok });
     },
     command: (id, name, args) => {
-      void import('./kontrollCommands')
+      // not before the library is the real one (api.ts storageReady) — the page may still be starting
+      void import('./api').then((a) => a.storageReady).then(() => import('./kontrollCommands'))
         .then((m) => m.runKontrollCommand(String(name || ''), args && typeof args === 'object' ? args : {}))
         .catch((err: unknown) => ({ ok: false, error: err instanceof Error ? err.message : String(err) }))
         .then((answer) => post({ kind: 'result', rid: String(id), ...answer }));
