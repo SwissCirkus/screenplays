@@ -55,6 +55,7 @@ import type { Editor as TiptapEditor } from '@tiptap/react';
 const exportJSON = (editor: TiptapEditor) => withoutSuggestionsJSON(editor.getJSON());
 import { downloadFDX } from '../utils/fdxExporter';
 import { downloadFountain, exportFountain } from '../utils/fountainExporter';
+import { setKontrollCurrentScript } from '../services/kontrollCommands';
 import { kontrollOpenInBrowser, kontrollSendToStoryBuilder, useKontrollBridge } from '../services/kontrollBridge';
 import { exportFadeIn } from '../utils/osfExporter';
 import {
@@ -2232,6 +2233,15 @@ const MenuBar: React.FC<MenuBarProps> = ({
   // SwissCirkus fork: inside Kontroll, hand the script to Story Builder as a new script revision (Kontroll says it can in hello).
   const kontrollStory = useKontrollBridge((s) => s.hello?.story === true);
   const kontrollBrowser = useKontrollBridge((s) => s.hello?.browser === true);
+  // Kontroll's Story Builder reads the open script back (with what's on screen, saved or not) when the writer leaves the tab
+  useEffect(() => {
+    setKontrollCurrentScript(() => {
+      if (!editor || !currentProject || !currentScriptId) return null;
+      const fountain = exportFountain(exportJSON(editor), { revisionSettings: useEditorStore.getState().revisionSettings, sceneNumbersVisible: useEditorStore.getState().sceneNumbersVisible });
+      return { projectId: currentProject.id, scriptId: currentScriptId, title: documentTitle || 'Untitled', fountain }; // i18n-ignore: Kontroll-only
+    });
+    return () => setKontrollCurrentScript(null);
+  }, [editor, currentProject, currentScriptId, documentTitle]);
   const handleSendToStoryBuilder = useCallback(async () => {
     if (!editor) return;
     const fountain = exportFountain(exportJSON(editor), {

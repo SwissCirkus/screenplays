@@ -1,5 +1,7 @@
 import ExternalSaveReview from './components/ExternalSaveReview';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { setKontrollNavigate } from './services/kontrollCommands';
 import ScreenplayEditor from './components/ScreenplayEditor';
 import TreatmentEditor from './components/TreatmentEditor';
 import ProjectList from './components/ProjectList';
@@ -29,6 +31,13 @@ import './styles/screenplay.css';
 import './styles/avScript.css';
 import './styles/tableRead.css';
 
+/* Kontroll's Story Builder opens a script here (kontrollCommands.ts openScript) — SwissCirkus fork */
+function KontrollNavigate(): null {
+  const navigate = useNavigate();
+  useEffect(() => { setKontrollNavigate((to) => navigate(to)); return () => setKontrollNavigate(null); }, [navigate]);
+  return null;
+}
+
 function App() {
   const pluginRoutes = pluginRegistry.getRoutes();
 
@@ -48,6 +57,7 @@ function App() {
       {browserLibrary() && <WebWelcome />}
       {/* Voice notes into a Google Doc (Tools menu) — SwissCirkus fork. */}
       <VoiceNotes />
+      <KontrollNavigate />
       <DemoBanner />
       <UpdateBanner />
       <Routes>

@@ -12,7 +12,8 @@
  * Requests: hello · ai {system,user,engine,maxTokens} · engine {engine} ·
  * doc {url} (a Google Doc's text, read with the writer's Google sign-in in
  * Kontroll) · open {url} (a link in a Kontroll web tab) · story {title,
- * fountain} (the script into Story Builder) · cancel.
+ * fountain} (the script into Story Builder) · cancel · result {rid, …} (the answer to
+ * one of Kontroll's commands — kontrollCommands.ts).
  *
  * In a plain browser nobody answers: `inKontroll()` stays false and the
  * features that need Kontroll say so.
@@ -69,6 +70,8 @@ interface Mailbox {
   micState(on: boolean): void;
   /** The mic's live level (nine bars, 0–1), about 12 times a second while it records; null when it stops. */
   micLevel(levels: number[] | null): void;
+  /** Kontroll drives the writer (Story Builder, 2026-11-20): a command; the answer comes back as a `result` request with this id. */
+  command(id: string, name: string, args: Record<string, unknown>): void;
 }
 
 declare global {
@@ -149,6 +152,12 @@ export function installKontrollBridge(): void {
     micLevel: (levels) => {
       const ok = Array.isArray(levels) ? levels.slice(0, 16).map((v) => Math.max(0, Math.min(1, Number(v) || 0))) : null;
       useKontrollBridge.setState({ micLevels: ok });
+    },
+    command: (id, name, args) => {
+      void import('./kontrollCommands')
+        .then((m) => m.runKontrollCommand(String(name || ''), args && typeof args === 'object' ? args : {}))
+        .catch((err: unknown) => ({ ok: false, error: err instanceof Error ? err.message : String(err) }))
+        .then((answer) => post({ kind: 'result', rid: String(id), ...answer }));
     },
   };
   post({ kind: 'hello' });
